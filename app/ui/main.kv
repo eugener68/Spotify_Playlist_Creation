@@ -1,0 +1,335 @@
+#:kivy 2.3.0
+
+<RootScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: "16dp"
+        spacing: "16dp"
+
+        Label:
+            text: "Spotify Playlist Automation"
+            font_size: "26sp"
+            bold: True
+            size_hint_y: None
+            height: self.texture_size[1] + dp(20)
+
+        ScrollView:
+            do_scroll_x: False
+
+            GridLayout:
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: "18dp"
+
+                BoxLayout:
+                    orientation: "vertical"
+                    padding: "12dp"
+                    spacing: "8dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    canvas.before:
+                        Color:
+                            rgba: (0.1, 0.1, 0.1, 0.08)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10]
+
+                    Label:
+                        text: "Authentication"
+                        font_size: "20sp"
+                        bold: True
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(8)
+
+                    Label:
+                        id: auth_status_label
+                        text: "Not signed in"
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(6)
+
+                    Label:
+                        id: scope_label
+                        text: ""
+                        color: 0.5, 0.5, 0.5, 1
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(4)
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: "48dp"
+                        spacing: "10dp"
+
+                        Button:
+                            id: auth_button
+                            text: "Sign in"
+                            on_release: root.on_auth_button_press()
+
+                        Button:
+                            text: "Open Spotify Dashboard"
+                            disabled: not root._state.is_authenticated
+                            on_release:
+                                import webbrowser
+                                webbrowser.open('https://open.spotify.com')
+
+                BoxLayout:
+                    orientation: "vertical"
+                    padding: "12dp"
+                    spacing: "12dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    canvas.before:
+                        Color:
+                            rgba: (0.1, 0.1, 0.1, 0.08)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10]
+
+                    Label:
+                        text: "Playlist Options"
+                        font_size: "20sp"
+                        bold: True
+                        size_hint_y: None
+                        height: self.texture_size[1] + dp(8)
+
+                    GridLayout:
+                        cols: 2
+                        row_default_height: "48dp"
+                        row_force_default: False
+                        size_hint_y: None
+                        height: self.minimum_height
+                        col_default_width: self.width / 2
+                        col_force_default: False
+                        spacing: "10dp"
+
+                        Label:
+                            text: "Playlist name"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: playlist_name_input
+                            multiline: False
+                            write_tab: False
+                            on_focus: root.update_playlist_name(self.text) if not self.focus else None
+
+                        Label:
+                            text: "Limit per artist"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: limit_per_artist_input
+                            multiline: False
+                            input_filter: "int"
+                            on_focus: root.update_numeric_option("limit_per_artist", self.text) if not self.focus else None
+
+                        Label:
+                            text: "Max artists"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: max_artists_input
+                            multiline: False
+                            input_filter: "int"
+                            on_focus: root.update_numeric_option("max_artists", self.text) if not self.focus else None
+
+                        Label:
+                            text: "Max tracks"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: max_tracks_input
+                            multiline: False
+                            input_filter: "int"
+                            on_focus: root.update_numeric_option("max_tracks", self.text) if not self.focus else None
+
+                        Label:
+                            text: "Shuffle seed"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: shuffle_seed_input
+                            multiline: False
+                            input_filter: "int"
+                            disabled: not root._state.playlist_options.shuffle
+                            on_focus: root.update_shuffle_seed(self.text) if not self.focus else None
+
+                        Label:
+                            text: "Artists file"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                        TextInput:
+                            id: artists_file_input
+                            multiline: False
+                            write_tab: False
+                            on_focus: root.update_artists_file(self.text) if not self.focus else None
+
+                    GridLayout:
+                        cols: 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        row_default_height: "36dp"
+                        spacing: "8dp"
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Add date stamp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: date_stamp_checkbox
+                                on_active: root.update_boolean_option("date_stamp", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Deduplicate variants"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: dedupe_checkbox
+                                on_active: root.update_boolean_option("dedupe_variants", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Print tracks to console"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: print_checkbox
+                                on_active: root.update_boolean_option("print_tracks", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Shuffle playlist"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: shuffle_checkbox
+                                on_active: root.update_boolean_option("shuffle", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Reuse existing playlist"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: reuse_checkbox
+                                on_active: root.update_boolean_option("reuse_existing", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Truncate existing tracks"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: truncate_checkbox
+                                on_active: root.update_boolean_option("truncate", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Dry run (no upload)"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: dry_run_checkbox
+                                on_active: root.update_boolean_option("dry_run", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Verbose logging"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: verbose_checkbox
+                                on_active: root.update_boolean_option("verbose", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            Label:
+                                text: "Use library artists"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+                            CheckBox:
+                                id: library_checkbox
+                                on_active: root.update_boolean_option("library_artists", self.active)
+
+                    BoxLayout:
+                        orientation: "vertical"
+                        padding: "12dp"
+                        spacing: "8dp"
+                        size_hint_y: None
+                        height: self.minimum_height
+                        canvas.before:
+                            Color:
+                                rgba: (0.1, 0.1, 0.1, 0.08)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [10]
+
+                        Label:
+                            text: "Build Status"
+                            font_size: "20sp"
+                            bold: True
+                            size_hint_y: None
+                            height: self.texture_size[1] + dp(8)
+
+                        Label:
+                            id: build_status_label
+                            text: "Idle"
+                            size_hint_y: None
+                            height: self.texture_size[1] + dp(6)
+
+                        Label:
+                            id: build_details_label
+                            text: ""
+                            color: 0.6, 0.6, 0.6, 1
+                            size_hint_y: None
+                            height: self.texture_size[1] + dp(4)
+
+                        Button:
+                            id: open_playlist_button
+                            text: "Open latest playlist"
+                            size_hint_y: None
+                            height: "44dp"
+                            disabled: True
+                            on_release: root.open_latest_playlist()
+
+        BoxLayout:
+            size_hint_y: None
+            height: "52dp"
+            spacing: "12dp"
+
+            Button:
+                id: dry_run_button
+                text: "Dry Run"
+                on_release: root.trigger_build(True)
+
+            Button:
+                id: build_button
+                text: "Build Playlist"
+                on_release: root.trigger_build(False)
