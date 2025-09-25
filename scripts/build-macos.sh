@@ -6,6 +6,7 @@ SPEC="$ROOT/packaging/AutoPlaylistBuilder.spec"
 
 PYTHON_BIN="python3"
 PYINSTALLER_ARGS=()
+BUNDLE_ENV=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -19,6 +20,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --clean)
       PYINSTALLER_ARGS+=("--clean")
+      shift
+      ;;
+    --bundle-env)
+      BUNDLE_ENV=1
       shift
       ;;
     *)
@@ -35,6 +40,25 @@ fi
 
 export KIVY_NO_ARGS=1
 
-"$PYTHON_BIN" -m PyInstaller "${PYINSTALLER_ARGS[@]}" "$SPEC"
+if (( ${#PYINSTALLER_ARGS[@]} )); then
+  "$PYTHON_BIN" -m PyInstaller "${PYINSTALLER_ARGS[@]}" "$SPEC"
+else
+  "$PYTHON_BIN" -m PyInstaller "$SPEC"
+fi
+
+if (( BUNDLE_ENV )); then
+  APP_RESOURCES=""
+  if [[ -d "$ROOT/dist/AutoPlaylistBuilder.app/Contents/Resources" ]]; then
+    APP_RESOURCES="$ROOT/dist/AutoPlaylistBuilder.app/Contents/Resources"
+  elif [[ -d "$ROOT/dist/AutoPlaylistBuilder/AutoPlaylistBuilder.app/Contents/Resources" ]]; then
+    APP_RESOURCES="$ROOT/dist/AutoPlaylistBuilder/AutoPlaylistBuilder.app/Contents/Resources"
+  fi
+  ENV_FILE="$ROOT/.env"
+
+  if [[ -f "$ENV_FILE" && -n "$APP_RESOURCES" ]]; then
+    mkdir -p "$APP_RESOURCES"
+    cp "$ENV_FILE" "$APP_RESOURCES/.env"
+  fi
+fi
 
 printf "\nPyInstaller build complete. Inspect dist/AutoPlaylistBuilder for the macOS bundle.\n"

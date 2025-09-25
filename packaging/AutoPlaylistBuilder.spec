@@ -98,3 +98,16 @@ coll = COLLECT(
     upx_exclude=[],
     name=APP_NAME,
 )
+
+app = BUNDLE(
+    coll,
+    name=f"{APP_NAME}.app",
+    icon=None,
+    bundle_identifier="com.eugener.autoplaylistbuilder",
+    info_plist={
+        "NSHighResolutionCapable": True,
+        "CFBundleName": APP_NAME,
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1.0.0",
+    },
+)
