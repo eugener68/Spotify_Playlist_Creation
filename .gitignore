@@ -32,6 +32,7 @@ MANIFEST
 *.manifest
 *.spec
 !packaging/AutoPlaylistBuilder.spec
+!packaging/AutoPlaylistBuilder-mac.spec
 
 # Installer logs
 pip-log.txt
