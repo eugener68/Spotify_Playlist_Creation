@@ -1,5 +1,5 @@
-"""Application package for Spotify playlist automation GUI."""
+"""Application package for Spotify playlist Builder GUI."""
 
-from .app import SpotifyPlaylistApp
+from .app import AutoPlaylistBuilder
 
-__all__ = ["SpotifyPlaylistApp"]
+__all__ = ["AutoPlaylistBuilder"]

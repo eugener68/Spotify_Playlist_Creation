@@ -29,6 +29,7 @@ class AppState:
     last_result: Optional[PlaylistResult] = None
     last_playlist_url: Optional[str] = None
     last_printed_tracks: List[str] = field(default_factory=list)
+    last_stats_lines: List[str] = field(default_factory=list)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "AppState":
@@ -92,6 +93,7 @@ class AppState:
         self.last_result = None
         self.last_playlist_url = None
         self.last_printed_tracks = []
+        self.last_stats_lines = []
 
     # ------------------------------------------------------------------
     # Playlist workflow helpers
@@ -101,6 +103,7 @@ class AppState:
         self.is_building_playlist = True
         self.build_status = message
         self.build_error = None
+        self.last_stats_lines = []
 
     def mark_build_success(
         self,
@@ -119,9 +122,11 @@ class AppState:
         self.last_result = result
         self.last_playlist_url = playlist_url
         self.last_printed_tracks = printed_tracks
+        self.last_stats_lines = result.stats.lines()
 
     def mark_build_failure(self, message: str) -> None:
         """Record a playlist build failure."""
         self.is_building_playlist = False
         self.build_status = "Playlist build failed"
         self.build_error = message
+        self.last_stats_lines = []

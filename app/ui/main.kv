@@ -1,15 +1,96 @@
 #:kivy 2.3.0
+#:import dp kivy.metrics.dp
+
+# Define colors for better visibility
+#:set bg_color (0.95, 0.95, 0.95, 1)          # Light gray background
+#:set section_bg_color (0.98, 0.98, 0.98, 1)  # Very light gray for sections  
+#:set border_color (0.8, 0.8, 0.8, 1)         # Light border
+#:set text_color (0.1, 0.1, 0.1, 1)           # Much darker text (almost black)
+#:set accent_color (0.1, 0.7, 0.3, 1)         # Spotify green
+#:set checkbox_color (0.4, 0.4, 0.4, 1)       # Gray for checkboxes
+#:set button_bg_color (0.23, 0.23, 0.23, 1)
+#:set button_down_bg (0.18, 0.18, 0.18, 1)
+#:set button_disabled_bg (0.7, 0.7, 0.7, 1)
+#:set button_text_color (1, 1, 1, 1)
+#:set button_disabled_text (0.2, 0.2, 0.2, 1)
+
+# Custom CheckBox style for better visibility
+<CheckBox>:
+    canvas.before:
+        Color:
+            rgba: (1, 1, 1, 1) if self.active else (0.95, 0.95, 0.95, 1)
+        RoundedRectangle:
+            pos: self.center_x - 12, self.center_y - 12
+            size: 24, 24
+            radius: [4]
+        Color:
+            rgba: accent_color if self.active else border_color
+        Line:
+            rounded_rectangle: (self.center_x - 12, self.center_y - 12, 24, 24, 4)
+            width: 2
+        Color:
+            rgba: accent_color if self.active else (0, 0, 0, 0)
+        Line:
+            points: [self.center_x - 6, self.center_y, self.center_x - 2, self.center_y - 4, self.center_x + 6, self.center_y + 4] if self.active else []
+            width: 2
+
+<FormTextInput@TextInput>:
+    size_hint_y: None
+    height: "50dp"
+    padding: [dp(12), dp(14)]
+    background_normal: ""
+    background_active: ""
+    background_color: (1, 1, 1, 1)
+    foreground_color: text_color
+    cursor_color: text_color
+
+<SectionTitle@Label>:
+    color: text_color
+    font_size: "20sp"
+    bold: True
+    size_hint_y: None
+    height: self.texture_size[1] + dp(8)
+
+<FieldLabel@Label>:
+    color: text_color
+    halign: "left"
+    valign: "middle"
+    text_size: self.size
+    bold: True
+
+<StatusLabel@Label>:
+    color: text_color
+    bold: True
+    size_hint_y: None
+    height: self.texture_size[1] + dp(6)
+
+<Button>:
+    background_normal: ""
+    background_down: ""
+    background_disabled_normal: ""
+    background_disabled_down: ""
+    background_color: (button_down_bg if self.state == "down" else button_bg_color) if not self.disabled else button_disabled_bg
+    color: button_text_color if not self.disabled else button_disabled_text
+    disabled_color: button_disabled_text
 
 <RootScreen>:
+    canvas.before:
+        Color:
+            rgba: bg_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    
     BoxLayout:
         orientation: "vertical"
         padding: "16dp"
         spacing: "16dp"
 
         Label:
-            text: "Spotify Playlist Automation"
+            text: "Spotify Playlist Builder"
             font_size: "26sp"
             bold: True
+            color: text_color
             size_hint_y: None
             height: self.texture_size[1] + dp(20)
 
@@ -30,30 +111,50 @@
                     height: self.minimum_height
                     canvas.before:
                         Color:
-                            rgba: (0.1, 0.1, 0.1, 0.08)
+                            rgba: section_bg_color
                         RoundedRectangle:
                             pos: self.pos
                             size: self.size
                             radius: [10]
+                        Color:
+                            rgba: border_color
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                            width: 1.2
 
-                    Label:
+                    SectionTitle:
                         text: "Authentication"
-                        font_size: "20sp"
-                        bold: True
-                        size_hint_y: None
-                        height: self.texture_size[1] + dp(8)
 
                     Label:
                         id: auth_status_label
                         text: "Not signed in"
+                        bold: True
+                        color: text_color
                         size_hint_y: None
                         height: self.texture_size[1] + dp(6)
 
                     Label:
                         id: scope_label
                         text: ""
-                        color: 0.5, 0.5, 0.5, 1
+                        bold: True
+                        color: text_color
                         size_hint_y: None
+                        text_size: self.width, None
+                        height: self.texture_size[1] + dp(4)
+
+                    Label:
+                        id: granted_scope_label
+                        text: ""
+                        color: (0.35, 0.35, 0.35, 1)
+                        size_hint_y: None
+                        text_size: self.width, None
+                        height: self.texture_size[1] + dp(4)
+
+                    Label:
+                        text: "Tip: After changing scopes, sign out and sign back in to refresh permissions."
+                        color: (0.45, 0.45, 0.45, 1)
+                        size_hint_y: None
+                        text_size: self.width, None
                         height: self.texture_size[1] + dp(4)
 
                     BoxLayout:
@@ -67,8 +168,8 @@
                             on_release: root.on_auth_button_press()
 
                         Button:
+                            id: dashboard_button
                             text: "Open Spotify Dashboard"
-                            disabled: not root._state.is_authenticated
                             on_release:
                                 import webbrowser
                                 webbrowser.open('https://open.spotify.com')
@@ -87,12 +188,8 @@
                             size: self.size
                             radius: [10]
 
-                    Label:
+                    SectionTitle:
                         text: "Playlist Options"
-                        font_size: "20sp"
-                        bold: True
-                        size_hint_y: None
-                        height: self.texture_size[1] + dp(8)
 
                     GridLayout:
                         cols: 2
@@ -104,72 +201,73 @@
                         col_force_default: False
                         spacing: "10dp"
 
-                        Label:
+                        FieldLabel:
                             text: "Playlist name"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
+                        FormTextInput:
                             id: playlist_name_input
                             multiline: False
                             write_tab: False
                             on_focus: root.update_playlist_name(self.text) if not self.focus else None
 
-                        Label:
+                        FieldLabel:
                             text: "Limit per artist"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
+                        FormTextInput:
                             id: limit_per_artist_input
                             multiline: False
                             input_filter: "int"
                             on_focus: root.update_numeric_option("limit_per_artist", self.text) if not self.focus else None
 
-                        Label:
+                        FieldLabel:
                             text: "Max artists"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
+                        FormTextInput:
                             id: max_artists_input
                             multiline: False
                             input_filter: "int"
                             on_focus: root.update_numeric_option("max_artists", self.text) if not self.focus else None
 
-                        Label:
+                        FieldLabel:
                             text: "Max tracks"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
+                        FormTextInput:
                             id: max_tracks_input
                             multiline: False
                             input_filter: "int"
                             on_focus: root.update_numeric_option("max_tracks", self.text) if not self.focus else None
 
-                        Label:
+                        FieldLabel:
                             text: "Shuffle seed"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
+                        FormTextInput:
                             id: shuffle_seed_input
                             multiline: False
                             input_filter: "int"
                             disabled: not root._state.playlist_options.shuffle
                             on_focus: root.update_shuffle_seed(self.text) if not self.focus else None
 
-                        Label:
-                            text: "Artists file"
-                            halign: "left"
-                            valign: "middle"
-                            text_size: self.size
-                        TextInput:
-                            id: artists_file_input
-                            multiline: False
+                        FieldLabel:
+                            text: "Manual artists"
+                        FormTextInput:
+                            id: manual_artists_input
+                            multiline: True
                             write_tab: False
-                            on_focus: root.update_artists_file(self.text) if not self.focus else None
+                            hint_text: "One artist per line or separated by commas"
+                            height: "130dp"
+                            on_focus: root.update_manual_artists(self.text) if not self.focus else None
+
+                        FieldLabel:
+                            text: "Artists file (one artist per line)"
+                        BoxLayout:
+                            orientation: "horizontal"
+                            spacing: "6dp"
+                            FormTextInput:
+                                id: artists_file_input
+                                multiline: False
+                                write_tab: False
+                                hint_text: "Otional if entering manually"
+                                on_focus: root.update_artists_file(self.text) if not self.focus else None
+                            Button:
+                                text: "Browse"
+                                size_hint_x: None
+                                width: "80dp"
+                                on_release: root.browse_artists_file()
 
                     GridLayout:
                         cols: 2
@@ -180,102 +278,75 @@
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
-                                text: "Add date stamp"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
+                            FieldLabel:
+                                text: "Add date stamp to playlist name"
                             CheckBox:
                                 id: date_stamp_checkbox
                                 on_active: root.update_boolean_option("date_stamp", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Deduplicate variants"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: dedupe_checkbox
                                 on_active: root.update_boolean_option("dedupe_variants", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Print tracks to console"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: print_checkbox
                                 on_active: root.update_boolean_option("print_tracks", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Shuffle playlist"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: shuffle_checkbox
                                 on_active: root.update_boolean_option("shuffle", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Reuse existing playlist"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: reuse_checkbox
                                 on_active: root.update_boolean_option("reuse_existing", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Truncate existing tracks"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: truncate_checkbox
                                 on_active: root.update_boolean_option("truncate", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
-                                text: "Dry run (no upload)"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
-                            CheckBox:
-                                id: dry_run_checkbox
-                                on_active: root.update_boolean_option("dry_run", self.active)
-
-                        BoxLayout:
-                            spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Verbose logging"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: verbose_checkbox
                                 on_active: root.update_boolean_option("verbose", self.active)
 
                         BoxLayout:
                             spacing: "6dp"
-                            Label:
+                            FieldLabel:
                                 text: "Use library artists"
-                                halign: "left"
-                                valign: "middle"
-                                text_size: self.size
                             CheckBox:
                                 id: library_checkbox
                                 on_active: root.update_boolean_option("library_artists", self.active)
+
+                        BoxLayout:
+                            spacing: "6dp"
+                            FieldLabel:
+                                text: "Use followed artists"
+                            CheckBox:
+                                id: followed_checkbox
+                                on_active: root.update_boolean_option("followed_artists", self.active)
 
                     BoxLayout:
                         orientation: "vertical"
@@ -291,24 +362,30 @@
                                 size: self.size
                                 radius: [10]
 
-                        Label:
+                        SectionTitle:
                             text: "Build Status"
-                            font_size: "20sp"
-                            bold: True
-                            size_hint_y: None
-                            height: self.texture_size[1] + dp(8)
 
-                        Label:
+                        StatusLabel:
                             id: build_status_label
                             text: "Idle"
-                            size_hint_y: None
-                            height: self.texture_size[1] + dp(6)
 
                         Label:
                             id: build_details_label
                             text: ""
                             color: 0.6, 0.6, 0.6, 1
+                            bold: True
                             size_hint_y: None
+                            height: self.texture_size[1] + dp(4)
+
+                        Label:
+                            id: build_stats_label
+                            text: ""
+                            color: 0.4, 0.4, 0.4, 1
+                            size_hint_y: None
+                            opacity: 0
+                            text_size: self.width, None
+                            halign: "left"
+                            valign: "top"
                             height: self.texture_size[1] + dp(4)
 
                         Button:
@@ -323,6 +400,10 @@
             size_hint_y: None
             height: "52dp"
             spacing: "12dp"
+
+            Button:
+                text: "Exit"
+                on_release: root.exit_application()
 
             Button:
                 id: dry_run_button

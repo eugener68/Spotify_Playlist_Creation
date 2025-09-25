@@ -1,14 +1,21 @@
-"""Kivy application bootstrap for Spotify playlist automation."""
+"""Kivy application bootstrap for Spotify playlist Builder."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen, ScreenManager
+from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.popup import Popup
+from kivy.metrics import dp
+from kivy.graphics import Color, RoundedRectangle
 from app.controllers.auth_controller import AuthController
 from app.controllers.playlist_controller import PlaylistController
 
@@ -80,6 +87,58 @@ class RootScreen(Screen):
         cleaned = value.strip()
         self._state.playlist_options.artists_file = cleaned or None
 
+    def update_manual_artists(self, value: str) -> None:
+        normalized = value.replace("\r", "\n")
+        pieces = [
+            segment.strip().strip('"').strip("'")
+            for segment in re.split(r"[\n,;]+", normalized)
+        ]
+        queries = [piece for piece in pieces if piece]
+        self._state.playlist_options.manual_artist_queries = queries
+
+    def browse_artists_file(self) -> None:
+        """Open a file browser to select an artists file."""
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            
+            # Create a temporary root window (hidden)
+            root = tk.Tk()
+            root.withdraw()  # Hide the root window
+            root.attributes('-topmost', True)  # Bring to front
+            
+            # Open file dialog
+            file_path = filedialog.askopenfilename(
+                title="Select Artists File",
+                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            )
+            root.destroy()  # Clean up
+            
+            if file_path:
+                self._state.playlist_options.artists_file = file_path
+                # Update the text input widget
+                artists_file_input = self.ids.get("artists_file_input")
+                if artists_file_input is not None:
+                    artists_file_input.text = file_path
+                    
+        except ImportError:
+            # Fallback if tkinter is not available - show instructions
+            from kivy.uix.popup import Popup
+            from kivy.uix.label import Label
+            content = Label(
+                text=(
+                    "File Browser Not Available\n\n"
+                    "Either paste artist names into the Manual artists field\n"
+                    "(one name per line or separated by commas) or create a text file with:\n\n"
+                    "Metallica\nScorpions\nA-ha\n# Comments start with #\n\n"
+                    "One artist name per line."
+                ),
+                text_size=(450, None),
+                halign="center"
+            )
+            popup = Popup(title="Artists File Format", content=content, size_hint=(0.8, 0.7))
+            popup.open()
+
     def trigger_build(self, dry_run: bool) -> None:
         controller = self._app.playlist_controller
         if controller is not None:
@@ -91,6 +150,86 @@ class RootScreen(Screen):
             import webbrowser
 
             webbrowser.open(url)
+
+    def exit_application(self) -> None:
+        """Close the application window."""
+        app = App.get_running_app()
+        if app is not None:
+            app.stop()
+
+    def show_build_stats_popup(self, lines: Sequence[str]) -> None:
+        if not lines:
+            return
+
+        formatted_lines = [f"[b]{lines[0]}[/b]"] if lines else []
+        if len(lines) > 1:
+            formatted_lines.extend(lines[1:])
+        text_body = "\n".join(formatted_lines)
+
+        popup = Popup(
+            title="Playlist Build Stats",
+            size_hint=(None, None),
+            auto_dismiss=False,
+        )
+        popup.width = dp(520)
+
+        content = BoxLayout(
+            orientation="vertical",
+            padding=dp(22),
+            spacing=dp(16),
+            size_hint_y=None,
+        )
+        content.bind(
+            minimum_height=lambda _, value: setattr(content, "height", value)
+        )
+
+        with content.canvas.before:
+            bg_color = Color(1, 1, 1, 1)
+            bg_rect = RoundedRectangle(
+                radius=[dp(12)],
+                pos=content.pos,
+                size=content.size,
+            )
+
+        def _sync_bg(instance, _value):
+            bg_rect.pos = instance.pos
+            bg_rect.size = instance.size
+
+        content.bind(pos=_sync_bg, size=_sync_bg)
+
+        label = Label(
+            text=text_body,
+            markup=True,
+            color=(0.12, 0.12, 0.12, 1),
+            halign="left",
+            valign="top",
+            size_hint_y=None,
+            text_size=(popup.width - dp(80), None),
+        )
+
+        def _resize_label(instance, value):
+            instance.height = value[1]
+
+        label.bind(texture_size=_resize_label)
+
+        close_button = Button(
+            text="Close",
+            size_hint_y=None,
+            height=dp(44),
+        )
+        close_button.bind(on_release=lambda *_: popup.dismiss())
+
+        content.add_widget(label)
+        content.add_widget(close_button)
+        popup.content = content
+
+        def _update_popup_size(*_args):
+            popup.height = min(dp(520), label.height + close_button.height + dp(160))
+
+        label.bind(texture_size=lambda *_: _update_popup_size())
+        popup.bind(on_open=lambda *_: _update_popup_size())
+
+        popup.open()
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -105,6 +244,7 @@ class RootScreen(Screen):
     def _sync_state(self, _dt: float) -> None:
         state = self._state
         ids = self.ids
+        requested_scopes = ", ".join(settings.scopes)
         auth_label = ids.get("auth_status_label")
         if auth_label is not None:
             status_parts = [state.auth_status]
@@ -117,8 +257,18 @@ class RootScreen(Screen):
             button.disabled = state.is_authenticating
         scope_label = ids.get("scope_label")
         if scope_label is not None:
-            scope_label.text = (
-                f"Scopes: {state.granted_scope}" if state.granted_scope else ""
+            scope_label.text = f"Requested scopes: {requested_scopes}"
+        granted_scope_label = ids.get("granted_scope_label")
+        if granted_scope_label is not None:
+            if state.granted_scope:
+                granted_scope_text = ", ".join(state.granted_scope.split())
+                granted_scope_label.text = f"Granted scopes: {granted_scope_text}"
+            else:
+                granted_scope_label.text = "Granted scopes: (pending sign-in)"
+        dashboard_button = ids.get("dashboard_button")
+        if dashboard_button is not None:
+            dashboard_button.disabled = (
+                not state.is_authenticated or state.is_authenticating
             )
         build_label = ids.get("build_status_label")
         if build_label is not None:
@@ -145,6 +295,14 @@ class RootScreen(Screen):
                 if result.reused_existing:
                     details.append("Reused existing playlist")
                 details_label.text = " | ".join(details)
+        stats_label = ids.get("build_stats_label")
+        if stats_label is not None:
+            if state.last_stats_lines:
+                stats_label.text = "\n".join(state.last_stats_lines)
+                stats_label.opacity = 1
+            else:
+                stats_label.text = ""
+                stats_label.opacity = 0
         open_button = ids.get("open_playlist_button")
         if open_button is not None:
             open_button.disabled = not bool(state.last_playlist_url)
@@ -182,6 +340,9 @@ class RootScreen(Screen):
             widget = ids.get(widget_id)
             if widget is not None:
                 widget.text = value
+        manual_widget = ids.get("manual_artists_input")
+        if manual_widget is not None:
+            manual_widget.text = "\n".join(options.manual_artist_queries)
         boolean_mapping = {
             "date_stamp_checkbox": options.date_stamp,
             "dedupe_checkbox": options.dedupe_variants,
@@ -189,9 +350,9 @@ class RootScreen(Screen):
             "shuffle_checkbox": options.shuffle,
             "reuse_checkbox": options.reuse_existing,
             "truncate_checkbox": options.truncate,
-            "dry_run_checkbox": options.dry_run,
             "verbose_checkbox": options.verbose,
             "library_checkbox": options.library_artists,
+            "followed_checkbox": options.followed_artists,
         }
         for widget_id, active in boolean_mapping.items():
             widget = ids.get(widget_id)
@@ -202,7 +363,7 @@ class RootScreen(Screen):
             shuffle_seed_input.disabled = not options.shuffle
 
     @property
-    def _app(self) -> "SpotifyPlaylistApp":
+    def _app(self) -> "AutoPlaylistBuilder":
         return App.get_running_app()  # type: ignore[return-value]
 
     @property
@@ -214,10 +375,10 @@ class RootScreenManager(ScreenManager):
     """Single-screen manager kept for future navigation expansion."""
 
 
-class SpotifyPlaylistApp(App):
+class AutoPlaylistBuilder(App):
     """Main Kivy application class."""
 
-    title = "Spotify Playlist Automation"
+    title = "Spotify Playlist Builder"
 
     def __init__(self, **kwargs):  # type: ignore[no-untyped-def]
         super().__init__(**kwargs)
@@ -234,6 +395,17 @@ class SpotifyPlaylistApp(App):
         manager = RootScreenManager()
         manager.add_widget(RootScreen(name="home"))
         return manager
+
+    def show_build_stats_popup(self, lines: Sequence[str]) -> None:
+        root = self.root
+        if root is None:
+            return
+        try:
+            screen = root.get_screen("home")
+        except Exception:  # pylint: disable=broad-except
+            return
+        if hasattr(screen, "show_build_stats_popup"):
+            screen.show_build_stats_popup(lines)
 
     @property
     def state(self) -> AppState:

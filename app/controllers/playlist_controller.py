@@ -42,8 +42,15 @@ class PlaylistController:
                 )
                 return
             options = copy.deepcopy(self.state.playlist_options)
-            if dry_run:
-                options.dry_run = True
+            if options.reuse_existing:
+                options.target_playlist_id = None
+                last_result = self.state.last_result
+                if last_result and last_result.playlist_id:
+                    desired = options.playlist_name.strip().lower()
+                    existing_name = (last_result.playlist_name or "").strip().lower()
+                    if existing_name == desired or existing_name.startswith(f"{desired} "):
+                        options.target_playlist_id = last_result.playlist_id
+            options.dry_run = dry_run
             message = (
                 "Performing dry run..."
                 if options.dry_run
@@ -117,6 +124,10 @@ class PlaylistController:
             playlist_url,
             list(printed_tracks),
         )
+        stats_lines = result.stats.lines()
+        app = self._app
+        if stats_lines and hasattr(app, "show_build_stats_popup"):
+            app.show_build_stats_popup(stats_lines)
 
     @staticmethod
     def _build_playlist_url(result: PlaylistResult) -> Optional[str]:

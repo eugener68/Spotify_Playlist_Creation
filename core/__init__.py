@@ -1,1 +1,1 @@
-"""Core domain logic for Spotify playlist automation."""
+"""Core domain logic for Spotify playlist Builder."""

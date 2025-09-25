@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import datetime as _dt
+import difflib as _dif
 import random
+import unicodedata as _ud
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence, Tuple
@@ -11,6 +13,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 from core.playlist_options import PlaylistOptions
 from services.spotify_client import (
     Artist,
+    PlaylistSummary,
     SpotifyClientError,
     Track,
 )
@@ -18,6 +21,27 @@ from services.spotify_client import (
 
 class PlaylistBuilderError(RuntimeError):
     """Raised when playlist creation cannot proceed."""
+
+
+@dataclass
+class PlaylistStats:
+    """Structured summary metrics for a playlist build."""
+
+    playlist_name: str
+    artists_retrieved: int
+    top_tracks_retrieved: int
+    variants_deduped: int
+    total_prepared: int
+    total_uploaded: int
+
+    def lines(self) -> List[str]:
+        return [
+            f"Playlist name: {self.playlist_name}",
+            f"Artists retrieved: {self.artists_retrieved}",
+            f"Top songs retrieved: {self.top_tracks_retrieved}",
+            f"Variants deduped: {self.variants_deduped}",
+            f"Total tracks added to the list: {self.total_uploaded}",
+        ]
 
 
 @dataclass
@@ -31,6 +55,7 @@ class PlaylistResult:
     display_tracks: List[str]
     dry_run: bool
     reused_existing: bool
+    stats: PlaylistStats
 
 
 class PlaylistBuilder:
@@ -55,7 +80,10 @@ class PlaylistBuilder:
                 "No artists were resolved from the configured sources."
             )
 
-        tracks, skipped_duplicates = self._collect_tracks(artists, options)
+        tracks, skipped_duplicates, tracks_retrieved = self._collect_tracks(
+            artists,
+            options,
+        )
         if not tracks and not options.truncate:
             raise PlaylistBuilderError(
                 "No tracks could be generated for the playlist."
@@ -75,13 +103,32 @@ class PlaylistBuilder:
             for track in prepared_tracks
         ]
 
-        existing_playlist = (
-            self._client.find_playlist_by_name(playlist_name, owner_id=user_id)
-            if options.reuse_existing
-            else None
+        existing_playlist: Optional[PlaylistSummary] = None
+        if options.reuse_existing:
+            if options.target_playlist_id:
+                existing_playlist = PlaylistSummary(
+                    id=options.target_playlist_id,
+                    name=playlist_name,
+                    owner_id=user_id,
+                    track_count=0,
+                )
+            if existing_playlist is None:
+                existing_playlist = self._client.find_playlist_by_name(
+                    playlist_name,
+                    owner_id=user_id,
+                )
+
+        stats = PlaylistStats(
+            playlist_name=playlist_name,
+            artists_retrieved=len(artists),
+            top_tracks_retrieved=tracks_retrieved,
+            variants_deduped=len(skipped_duplicates),
+            total_prepared=len(prepared_uris),
+            total_uploaded=0,
         )
 
         if options.dry_run:
+            self._log_stats(stats)
             return PlaylistResult(
                 playlist_id=existing_playlist.id if existing_playlist else "",
                 playlist_name=playlist_name,
@@ -90,6 +137,7 @@ class PlaylistBuilder:
                 display_tracks=display_tracks,
                 dry_run=True,
                 reused_existing=bool(existing_playlist),
+                stats=stats,
             )
 
         playlist_id: Optional[str]
@@ -107,6 +155,10 @@ class PlaylistBuilder:
                 added_uris = prepared_uris.copy()
         else:
             playlist_id = existing_playlist.id
+            existing_uris = self._client.get_playlist_track_uris(
+                playlist_id
+            )
+            existing_uri_set = set(existing_uris)
             if options.truncate:
                 self._client.replace_playlist_tracks(
                     playlist_id,
@@ -114,15 +166,32 @@ class PlaylistBuilder:
                 )
                 added_uris = prepared_uris.copy()
             else:
-                existing_uris = self._client.get_playlist_track_uris(
-                    playlist_id
-                )
-                missing = [
-                    uri for uri in prepared_uris if uri not in existing_uris
+                added_uris = [
+                    uri for uri in prepared_uris if uri not in existing_uri_set
                 ]
-                if missing:
-                    self._client.add_tracks_to_playlist(playlist_id, missing)
-                    added_uris = missing
+                if options.shuffle:
+                    prepared_uri_set = set(prepared_uris)
+                    combined_uris = list(prepared_uris)
+                    combined_uris.extend(
+                        uri
+                        for uri in existing_uris
+                        if uri not in prepared_uri_set
+                    )
+                    if combined_uris:
+                        rng = random.Random(options.shuffle_seed)
+                        rng.shuffle(combined_uris)
+                        self._client.replace_playlist_tracks(
+                            playlist_id,
+                            combined_uris,
+                        )
+                elif added_uris:
+                    self._client.add_tracks_to_playlist(
+                        playlist_id,
+                        added_uris,
+                    )
+
+        stats.total_uploaded = len(added_uris)
+        self._log_stats(stats)
 
         return PlaylistResult(
             playlist_id=playlist_id or "",
@@ -132,6 +201,7 @@ class PlaylistBuilder:
             display_tracks=display_tracks,
             dry_run=False,
             reused_existing=bool(existing_playlist),
+            stats=stats,
         )
 
     @staticmethod
@@ -163,6 +233,9 @@ class PlaylistBuilder:
     ) -> List[Artist]:
         candidates: List[Artist] = []
 
+        manual_artists = self._load_artists_from_manual(options)
+        candidates.extend(manual_artists)
+
         file_artists = self._load_artists_from_file(options)
         candidates.extend(file_artists)
 
@@ -171,6 +244,12 @@ class PlaylistBuilder:
                 limit=max(options.max_artists, 20)
             )
             candidates.extend(library_artists)
+
+        if options.followed_artists or not candidates:
+            followed_artists = self._client.followed_artists(
+                limit=max(options.max_artists, 20)
+            )
+            candidates.extend(followed_artists)
 
         deduped: List[Artist] = []
         seen_ids = set()
@@ -185,6 +264,24 @@ class PlaylistBuilder:
                 break
 
         return deduped
+
+    def _load_artists_from_manual(
+        self,
+        options: PlaylistOptions,
+    ) -> List[Artist]:
+        if not options.manual_artist_queries:
+            return []
+        resolved: List[Artist] = []
+        for query in options.manual_artist_queries:
+            normalized = query.strip()
+            if not normalized:
+                continue
+            artist = self._resolve_artist_query(normalized)
+            if artist is not None:
+                resolved.append(artist)
+            elif options.verbose:
+                print(f"No Spotify artist found for '{normalized}'")
+        return resolved
 
     def _load_artists_from_file(
         self,
@@ -227,23 +324,44 @@ class PlaylistBuilder:
         if "open.spotify.com/artist" in normalized:
             artist_id = normalized.rstrip("/").split("/")[-1].split("?")[0]
             return self._client.artist(artist_id)
-        matches = self._client.search_artists(normalized, limit=1)
-        return matches[0] if matches else None
+        matches = self._client.search_artists(normalized, limit=10)
+        if not matches:
+            return None
+        target_casefold = normalized.casefold()
+        for match in matches:
+            if match.name.casefold() == target_casefold:
+                return match
+        target_simple = _strip_accents(target_casefold)
+        for match in matches:
+            if _strip_accents(match.name.casefold()) == target_simple:
+                return match
+        best = _dif.get_close_matches(
+            normalized,
+            [candidate.name for candidate in matches],
+            n=1,
+            cutoff=0.6,
+        )
+        if best:
+            for match in matches:
+                if match.name == best[0]:
+                    return match
+        return matches[0]
 
     def _collect_tracks(
         self,
         artists: Sequence[Artist],
         options: PlaylistOptions,
-    ) -> Tuple[List[Track], List[Track]]:
+    ) -> Tuple[List[Track], List[Track], int]:
         dedupe_on_name = options.dedupe_variants
         seen_ids = set()
         seen_names = set()
         selected: List[Track] = []
         skipped: List[Track] = []
+        total_tracks_retrieved = 0
 
         per_artist_limit = max(0, options.limit_per_artist)
         if per_artist_limit == 0:
-            return selected, skipped
+            return selected, skipped, total_tracks_retrieved
 
         for artist in artists:
             try:
@@ -257,6 +375,7 @@ class PlaylistBuilder:
                         f"Failed to fetch tracks for artist '{artist.name}'"
                     )
                 continue
+            total_tracks_retrieved += len(top_tracks)
             for track in top_tracks:
                 if not track.id:
                     continue
@@ -276,25 +395,14 @@ class PlaylistBuilder:
             if 0 < options.max_tracks <= len(selected):
                 break
 
-        return selected, skipped
+        return selected, skipped, total_tracks_retrieved
 
     def _build_description(
         self,
         options: PlaylistOptions,
         skipped_duplicates: Sequence[Track],
     ) -> str:
-        parts = ["Generated by Spotify Playlist Automation"]
-        if options.artists_file:
-            parts.append(
-                f"source file: {Path(options.artists_file).expanduser().name}"
-            )
-        if options.library_artists:
-            parts.append("+ library artists")
-        if skipped_duplicates:
-            parts.append(
-                f"deduped {len(skipped_duplicates)} variants"
-            )
-        return " | ".join(parts)
+        return "Generated by Spotify Playlist Builder (© 2025 EugeneR)"
 
     @staticmethod
     def _format_track(track: Track) -> str:
@@ -304,3 +412,14 @@ class PlaylistBuilder:
     @staticmethod
     def _to_track_uri(track: Track) -> str:
         return f"spotify:track:{track.id}"
+
+    @staticmethod
+    def _log_stats(stats: PlaylistStats) -> None:
+        print("Playlist build stats:")
+        for line in stats.lines():
+            print(f"  {line}")
+
+
+def _strip_accents(value: str) -> str:
+    normalized = _ud.normalize("NFKD", value)
+    return "".join(char for char in normalized if not _ud.combining(char))

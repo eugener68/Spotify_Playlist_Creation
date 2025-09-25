@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Iterable, List, Optional, Sequence
 
 import httpx
@@ -88,13 +89,32 @@ class SpotifyClient:
 
     def followed_artists(self, limit: int = 50) -> List[Artist]:
         """Fetch the user's followed artists."""
-        params = {"type": "artist", "limit": limit}
-        data = self._get("/me/following", params=params)
-        artists = data.get("artists", {}).get("items", [])
-        return [
-            Artist(id=item["id"], name=item["name"])
-            for item in artists
-        ]
+        desired = max(0, limit)
+        if desired == 0:
+            return []
+
+        collected: List[Artist] = []
+        after: Optional[str] = None
+
+        while len(collected) < desired:
+            page_limit = min(50, max(1, desired - len(collected)))
+            params = {"type": "artist", "limit": page_limit}
+            if after:
+                params["after"] = after
+
+            data = self._get("/me/following", params=params)
+            artists_block = data.get("artists", {})
+            items = artists_block.get("items", [])
+            for item in items:
+                collected.append(Artist(id=item["id"], name=item["name"]))
+                if len(collected) >= desired:
+                    break
+
+            after = artists_block.get("cursors", {}).get("after")
+            if not after or not artists_block.get("next"):
+                break
+
+        return collected
 
     def artist(self, artist_id: str) -> Artist:
         """Fetch a single artist by Spotify ID."""
@@ -118,12 +138,35 @@ class SpotifyClient:
         time_range: str = "medium_term",
     ) -> List[Artist]:
         """Fetch the user's top artists."""
-        params = {"limit": limit, "time_range": time_range}
-        data = self._get("/me/top/artists", params=params)
-        return [
-            Artist(id=item["id"], name=item["name"])
-            for item in data.get("items", [])
-        ]
+        desired = max(0, limit)
+        if desired == 0:
+            return []
+
+        collected: List[Artist] = []
+        offset = 0
+
+        while len(collected) < desired:
+            page_limit = min(50, max(1, desired - len(collected)))
+            params = {
+                "limit": page_limit,
+                "offset": offset,
+                "time_range": time_range,
+            }
+            data = self._get("/me/top/artists", params=params)
+            items = data.get("items", [])
+            if not items:
+                break
+
+            for item in items:
+                collected.append(Artist(id=item["id"], name=item["name"]))
+                if len(collected) >= desired:
+                    break
+
+            offset += len(items)
+            if len(items) < page_limit:
+                break
+
+        return collected
 
     def top_tracks_for_artist(
         self,
@@ -218,10 +261,11 @@ class SpotifyClient:
             params["offset"] = params.get("offset", 0) + params["limit"]
         return uris
 
-    def user_playlists(self, limit: int = 50) -> List[PlaylistSummary]:
+    def user_playlists(self, limit: Optional[int] = 100) -> List[PlaylistSummary]:
         """Return playlists associated with the current user."""
         playlists: List[PlaylistSummary] = []
-        params = {"limit": min(limit, 50), "offset": 0}
+        page_limit = 100 if limit is None else min(limit, 100)
+        params = {"limit": page_limit, "offset": 0}
         while True:
             data = self._get("/me/playlists", params=params)
             items = data.get("items", [])
@@ -236,7 +280,7 @@ class SpotifyClient:
                         track_count=tracks_info.get("total", 0),
                     )
                 )
-                if len(playlists) >= limit:
+                if limit is not None and len(playlists) >= limit:
                     return playlists
             if not data.get("next"):
                 break
@@ -248,14 +292,20 @@ class SpotifyClient:
         name: str,
         owner_id: Optional[str] = None,
         *,
-        search_limit: int = 200,
+        search_limit: Optional[int] = None,
     ) -> Optional[PlaylistSummary]:
-        """Locate a playlist by exact (case-insensitive) name match."""
+        """Locate a playlist by matching name (case-insensitive)."""
         needle = name.strip().lower()
+        date_suffix_pattern = re.compile(r"\d{4}-\d{2}-\d{2}$")
+        fallback: Optional[PlaylistSummary] = None
         for playlist in self.user_playlists(limit=search_limit):
-            if playlist.name.strip().lower() != needle:
-                continue
+            candidate = playlist.name.strip().lower()
             if owner_id and playlist.owner_id != owner_id:
                 continue
-            return playlist
-        return None
+            if candidate == needle:
+                return playlist
+            if candidate.startswith(f"{needle} "):
+                suffix = candidate[len(needle) :].strip()
+                if date_suffix_pattern.match(suffix):
+                    fallback = fallback or playlist
+        return fallback
