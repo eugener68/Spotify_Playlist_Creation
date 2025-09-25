@@ -17,7 +17,7 @@ Set the `SPOTIFY_SCOPES` environment variable to the comma-separated list above 
 
 ### Windows & macOS executables (PyInstaller)
 
-This repository now ships with a shared PyInstaller spec (`packaging/AutoPlaylistBuilder.spec`) and helper scripts that bundle the Kivy UI and default configuration automatically.
+This repository now ships with platform-specific PyInstaller specs and helper scripts that bundle the Kivy UI and default configuration automatically.
 
 1. **Install build dependencies** inside a fresh virtual environment:
 
@@ -36,17 +36,19 @@ This repository now ships with a shared PyInstaller spec (`packaging/AutoPlaylis
 
      Pass `-Clean` to force a fresh build (`./scripts/build-windows.ps1 -Clean`).
 
+      Uses `packaging/AutoPlaylistBuilder.spec`, which produces the standard folder-style distribution expected on Windows.
+
    - **macOS (zsh/bash):** run the script on a Mac host with a working Python 3 + Kivy toolchain (you can make it executable once via `chmod +x scripts/build-macos.sh`):
 
      ```bash
      ./scripts/build-macos.sh
      ```
 
-       Add `--clean` to force a fresh build, or point to a different interpreter with `--python /full/path/to/python`. Any other arguments are passed straight to PyInstaller.
+      Add `--clean` to force a fresh build, or point to a different interpreter with `--python /full/path/to/python`. Any other arguments are passed straight to PyInstaller. Append `--bundle-env` to tuck the project `.env` into `AutoPlaylistBuilder.app/Contents/Resources/.env` for self-contained distribution. This script targets `packaging/AutoPlaylistBuilder-mac.spec`, which emits a true `.app` bundle with GUI-only boot mode.
 
-   Both scripts invoke PyInstaller with the shared spec, include `app/ui/main.kv` and `config/settings.py`, and request the correct SDL/GLEW backends for each OS.
+   Both scripts include `app/ui/main.kv` and `config/settings.py`, and request the correct SDL/GLEW backends for each OS.
 
-3. **Distribute the bundle** located in `dist/AutoPlaylistBuilder/`. Copy your `.env` into that folder (or adjust baked defaults in `config/settings.py`) before sharing the build.
+3. **Distribute the bundle** located in `dist/AutoPlaylistBuilder/`. On Windows, copy your `.env` alongside the executable (or adjust baked defaults in `config/settings.py`). On macOS, pass `--bundle-env` during the build or manually add the file inside the generated `.app` under `Contents/Resources/.env`.
 4. **Optional macOS signing:** For public releases, sign and notarise the app (`codesign --deep --force --sign ...` followed by `xcrun notarytool submit`). Skip this step for personal testing.
 
 ### Android APK (Buildozer)

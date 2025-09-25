@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SPEC="$ROOT/packaging/AutoPlaylistBuilder.spec"
+SPEC="$ROOT/packaging/AutoPlaylistBuilder-mac.spec"
 
 PYTHON_BIN="python3"
 PYINSTALLER_ARGS=()

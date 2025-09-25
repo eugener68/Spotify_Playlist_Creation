@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller build specification for Spotify Playlist Builder."""
+"""PyInstaller build specification for Spotify Playlist Builder (macOS bundle)."""
 
 from __future__ import annotations
 
@@ -31,19 +31,12 @@ HIDDENIMPORTS = [
     "kivy.core.clipboard.clipboard_sdl2",
 ]
 
-# Extra dependencies required on Windows to ship the bundled SDL/GLEW stacks.
-if sys.platform.startswith("win"):
-    HIDDENIMPORTS += [
-        "kivy_deps.glew",
-        "kivy_deps.sdl2",
-        "kivy_deps.angle",
-    ]
-elif sys.platform == "darwin":
-    HIDDENIMPORTS += [
-        "kivy_deps.glew",
-        "kivy_deps.sdl2",
-        "kivy_deps.gstreamer",
-    ]
+# macOS build still relies on these dynamic libs for the SDL stack.
+HIDDENIMPORTS += [
+    "kivy_deps.glew",
+    "kivy_deps.sdl2",
+    "kivy_deps.gstreamer",
+]
 
 # Collect additional optional modules to prevent missing garden/widget errors.
 HIDDENIMPORTS += collect_submodules("kivy.modules")
@@ -82,7 +75,7 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=sys.platform == "darwin",
+    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
@@ -97,4 +90,17 @@ coll = COLLECT(
     upx=True,
     upx_exclude=[],
     name=APP_NAME,
+)
+
+app = BUNDLE(
+    coll,
+    name=f"{APP_NAME}.app",
+    icon=None,
+    bundle_identifier="com.eugener.autoplaylistbuilder",
+    info_plist={
+        "NSHighResolutionCapable": True,
+        "CFBundleName": APP_NAME,
+        "CFBundleShortVersionString": "1.0.0",
+        "CFBundleVersion": "1.0.0",
+    },
 )
