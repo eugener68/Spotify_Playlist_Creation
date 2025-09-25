@@ -36,13 +36,13 @@ This repository now ships with a shared PyInstaller spec (`packaging/AutoPlaylis
 
      Pass `-Clean` to force a fresh build (`./scripts/build-windows.ps1 -Clean`).
 
-   - **macOS (zsh/bash):** make the script executable once (`chmod +x scripts/build-macos.sh`) and run:
+   - **macOS (zsh/bash):** run the script on a Mac host with a working Python 3 + Kivy toolchain (you can make it executable once via `chmod +x scripts/build-macos.sh`):
 
      ```bash
      ./scripts/build-macos.sh
      ```
 
-     You can forward extra PyInstaller flags, e.g. `./scripts/build-macos.sh --clean`.
+       Add `--clean` to force a fresh build, or point to a different interpreter with `--python /full/path/to/python`. Any other arguments are passed straight to PyInstaller.
 
    Both scripts invoke PyInstaller with the shared spec, include `app/ui/main.kv` and `config/settings.py`, and request the correct SDL/GLEW backends for each OS.
 
