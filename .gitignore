@@ -207,3 +207,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project secrets
+google_secret.json
+ytmusic_oauth.json

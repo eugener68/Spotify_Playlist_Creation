@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Optional
 
-from core.playlist_options import PlaylistOptions
-from core.playlist_builder import PlaylistResult
 from config.settings import Settings
+from core.playlist_builder import PlaylistResult
+from core.playlist_options import PlaylistOptions
 
 
 @dataclass
@@ -23,6 +25,9 @@ class AppState:
     auth_error: Optional[str] = None
     user_display_name: Optional[str] = None
     granted_scope: Optional[str] = None
+    ytmusic_credentials_path: Optional[str] = None
+    ytmusic_auth_status: str = "YouTube Music credentials not found"
+    ytmusic_credentials_ready: bool = False
     is_building_playlist: bool = False
     build_status: str = "Idle"
     build_error: Optional[str] = None
@@ -35,7 +40,11 @@ class AppState:
     def from_settings(cls, settings: Settings) -> "AppState":
         """Create a default state object from persisted settings."""
         options = PlaylistOptions.from_settings(settings)
-        return cls(playlist_options=options)
+        state = cls(playlist_options=options)
+        path = settings.ytmusic_oauth_path
+        state.ytmusic_credentials_path = path
+        state.refresh_ytmusic_status()
+        return state
 
     @property
     def is_authenticated(self) -> bool:
@@ -94,6 +103,39 @@ class AppState:
         self.last_playlist_url = None
         self.last_printed_tracks = []
         self.last_stats_lines = []
+
+    def refresh_ytmusic_status(self) -> None:
+        """Update YouTube Music credential status."""
+        path = self.ytmusic_credentials_path
+        resolved = Path(path).expanduser() if path else None
+        ready = False
+        message = "YouTube Music credentials not found"
+
+        if resolved and resolved.exists():
+            try:
+                with resolved.open(encoding="utf-8") as handle:
+                    data = json.load(handle)
+            except json.JSONDecodeError:
+                message = "Invalid YouTube Music OAuth file (not JSON)"
+            except OSError as exc:
+                message = f"Unable to read OAuth file: {exc}"[:120]
+            else:
+                if isinstance(data, dict) and {
+                    "access_token",
+                    "refresh_token",
+                    "scope",
+                    "token_type",
+                }.issubset(data.keys()):
+                    ready = True
+                    message = "YouTube Music credentials detected"
+                else:
+                    message = (
+                        "OAuth client credentials found; run the OAuth flow "
+                        "to generate tokens."
+                    )
+
+        self.ytmusic_credentials_ready = ready
+        self.ytmusic_auth_status = message
 
     # ------------------------------------------------------------------
     # Playlist workflow helpers

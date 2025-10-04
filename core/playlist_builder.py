@@ -144,10 +144,16 @@ class PlaylistBuilder:
         added_uris: List[str] = []
 
         if existing_playlist is None:
+            description = options.playlist_description or (
+                self._build_description(
+                    options,
+                    skipped_duplicates,
+                )
+            )
             playlist_id = self._client.create_playlist(
                 user_id,
                 playlist_name,
-                self._build_description(options, skipped_duplicates),
+                description,
                 public=False,
             )
             if prepared_uris:

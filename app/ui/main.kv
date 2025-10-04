@@ -13,6 +13,9 @@
 #:set button_disabled_bg (0.7, 0.7, 0.7, 1)
 #:set button_text_color (1, 1, 1, 1)
 #:set button_disabled_text (0.2, 0.2, 0.2, 1)
+#:set spinner_border_color (0.7, 0.7, 0.7, 1)
+#:set spinner_focus_color (0.84, 0.93, 0.87, 1)
+#:set spinner_bg_color (1, 1, 1, 1)
 
 # Custom CheckBox style for better visibility
 <CheckBox>:
@@ -39,6 +42,10 @@
     height: "50dp"
     padding: [dp(12), dp(14)]
     background_normal: ""
+    background_active: ""
+    background_color: (1, 1, 1, 1)
+    foreground_color: text_color
+    cursor_color: text_color
     background_active: ""
     background_color: (1, 1, 1, 1)
     foreground_color: text_color
@@ -73,6 +80,54 @@
     color: button_text_color if not self.disabled else button_disabled_text
     disabled_color: button_disabled_text
 
+<Spinner>:
+    background_normal: ""
+    background_down: ""
+    background_disabled_normal: ""
+    background_disabled_down: ""
+    background_color: spinner_bg_color
+    color: text_color
+    font_size: "18sp"
+    bold: True
+    text_size: self.width - dp(20), self.height
+    halign: "center"
+    valign: "middle"
+    canvas.before:
+        Color:
+            rgba: self.background_color
+        RoundedRectangle:
+            pos: self.x, self.y
+            size: self.width, self.height
+            radius: [8]
+        Color:
+            rgba: spinner_border_color
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+            width: 1.2
+
+<SpinnerOption>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: app.root.get_screen("home").spinner_text_color if app.root else text_color
+    font_size: "16sp"
+    bold: True
+    halign: "center"
+    valign: "middle"
+    text_size: self.size
+    canvas.before:
+        Color:
+            rgba: (app.root.get_screen("home").spinner_dropdown_highlight_color if self.state == "down" else app.root.get_screen("home").spinner_dropdown_bg_color) if app.root else (spinner_focus_color if self.state == "down" else spinner_bg_color)
+        RoundedRectangle:
+            pos: self.x, self.y
+            size: self.width, self.height
+            radius: [6]
+        Color:
+            rgba: spinner_border_color
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, 6)
+            width: 1
+
 <RootScreen>:
     canvas.before:
         Color:
@@ -87,7 +142,7 @@
         spacing: "16dp"
 
         Label:
-            text: "Spotify Playlist Builder"
+            text: "Spotify/YouTube Music Playlist Builder"
             font_size: "26sp"
             bold: True
             color: text_color
@@ -102,6 +157,55 @@
                 size_hint_y: None
                 height: self.minimum_height
                 spacing: "18dp"
+
+                BoxLayout:
+                    orientation: "vertical"
+                    padding: "12dp"
+                    spacing: "8dp"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    canvas.before:
+                        Color:
+                            rgba: section_bg_color
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10]
+                        Color:
+                            rgba: border_color
+                        Line:
+                            rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                            width: 1.2
+
+                    SectionTitle:
+                        text: "Music Service"
+
+                    Label:
+                        text: "Select your music provider first. Options below adapt automatically."
+                        color: (0.35, 0.35, 0.35, 1)
+                        size_hint_y: None
+                        text_size: self.width, None
+                        height: self.texture_size[1] + dp(6)
+
+                    GridLayout:
+                        cols: 2
+                        size_hint_y: None
+                        height: self.minimum_height
+                        row_default_height: "48dp"
+                        spacing: "10dp"
+
+                        FieldLabel:
+                            text: "Service"
+
+                        Spinner:
+                            id: music_service_spinner
+                            text: "SPOTIFY"
+                            values: ["SPOTIFY", "YTMUSIC"]
+                            size_hint_y: None
+                            height: "48dp"
+                            background_color: root.spinner_background_color
+                            color: root.spinner_text_color
+                            on_text: root.update_music_service(self.text)
 
                 BoxLayout:
                     orientation: "vertical"
@@ -169,10 +273,8 @@
 
                         Button:
                             id: dashboard_button
-                            text: "Open Spotify Dashboard"
-                            on_release:
-                                import webbrowser
-                                webbrowser.open('https://open.spotify.com')
+                            text: root.dashboard_button_text
+                            on_release: root.open_dashboard()
 
                 BoxLayout:
                     orientation: "vertical"
@@ -208,6 +310,17 @@
                             multiline: False
                             write_tab: False
                             on_focus: root.update_playlist_name(self.text) if not self.focus else None
+
+                        FieldLabel:
+                            text: "Playlist description"
+                        FormTextInput:
+                            id: playlist_description_input
+                            multiline: True
+                            size_hint_y: None
+                            height: "80dp"
+                            write_tab: False
+                            hint_text: "Optional"
+                            on_focus: root.update_playlist_description(self.text) if not self.focus else None
 
                         FieldLabel:
                             text: "Limit per artist"
@@ -261,7 +374,7 @@
                                 id: artists_file_input
                                 multiline: False
                                 write_tab: False
-                                hint_text: "Otional if entering manually"
+                                hint_text: "Optional if entering manually"
                                 on_focus: root.update_artists_file(self.text) if not self.focus else None
                             Button:
                                 text: "Browse"

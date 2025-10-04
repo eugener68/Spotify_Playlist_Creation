@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from config.settings import Settings
+from core.music_service import MusicService
 
 
 @dataclass
@@ -13,6 +14,7 @@ class PlaylistOptions:
     """Container for playlist creation preferences."""
 
     playlist_name: str = "Fav Artists Top Tracks"
+    playlist_description: Optional[str] = None
     date_stamp: bool = False
     limit_per_artist: int = 5
     max_artists: int = 100
@@ -30,6 +32,7 @@ class PlaylistOptions:
     artists_file: Optional[str] = None
     manual_artist_queries: List[str] = field(default_factory=list)
     target_playlist_id: Optional[str] = None
+    music_service: MusicService = MusicService.SPOTIFY
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "PlaylistOptions":
@@ -40,4 +43,5 @@ class PlaylistOptions:
             max_artists=settings.default_max_artists,
             max_tracks=settings.default_max_tracks,
             verbose=settings.default_verbose,
+            music_service=MusicService(settings.default_music_service),
         )
