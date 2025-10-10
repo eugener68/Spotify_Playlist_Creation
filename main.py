@@ -110,6 +110,7 @@ def load_environment() -> None:
         )
 
     loaded = False
+    loaded_paths: list[Path] = []
     seen: set[Path] = set()
     for candidate in candidates:
         if candidate in seen:
@@ -118,9 +119,15 @@ def load_environment() -> None:
         if candidate.exists():
             load_dotenv(candidate, override=True)
             loaded = True
+            loaded_paths.append(candidate)
 
     if not loaded:
         load_dotenv()
+    # Persist sources for later logging after logging is configured
+    if loaded_paths:
+        os.environ["ENV_SOURCES"] = ",".join(str(p) for p in loaded_paths)
+    else:
+        os.environ.pop("ENV_SOURCES", None)
 
 
 load_environment()
@@ -190,6 +197,13 @@ def configure_logging():
     _redirect_standard_streams_to_logger(enable_console)
 
 configure_logging()  # noqa: E305
+
+# Log environment sources after logging is configured
+env_sources = os.getenv("ENV_SOURCES")
+if env_sources:
+    logging.getLogger(__name__).info("Loaded environment from: %s", env_sources)
+else:
+    logging.getLogger(__name__).info("No project .env file found; using process environment only")
 
 # Configure Kivy logging before importing Kivy
 kivy_log_level = os.getenv("KIVY_LOG_LEVEL", "INFO").upper()

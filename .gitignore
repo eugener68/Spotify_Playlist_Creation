@@ -207,3 +207,18 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Buildozer / Android build outputs
+.buildozer/
+buildozer-env/
+bin/
+*.apk
+*.aab
+# Android/NDK auxiliary caches that may appear in tree
+.gradle/
+.cxx/
+
+# Android signing keys (never commit these)
+*.jks
+*.keystore
+keystore.properties

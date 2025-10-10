@@ -10,6 +10,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Debug helper: if user wants to verify env loading before Settings is built.
+_raw_client_id = os.getenv("SPOTIFY_CLIENT_ID", "")
+if _raw_client_id:
+    masked = _raw_client_id[:6] + "..." if len(_raw_client_id) > 6 else _raw_client_id
+    # Avoid importing logging globally here; print is fine this early.
+    print(f"[config] Detected SPOTIFY_CLIENT_ID (masked): {masked}")
+else:
+    print("[config] SPOTIFY_CLIENT_ID not present in environment at import time")
+
 
 REQUIRED_SCOPES = (
     "playlist-modify-private",
@@ -38,6 +47,14 @@ class Settings:
     def from_env(cls) -> "Settings":
         """Load configuration from environment variables."""
         client_id = os.getenv("SPOTIFY_CLIENT_ID", "")
+        # Treat common placeholder values as missing so the UI shows a clear error
+        placeholder_ids = {
+            "your_spotify_client_id",
+            "<your_client_id>",
+            "spotify_client_id_here",
+        }
+        if client_id.strip().lower() in placeholder_ids:
+            client_id = ""
         raw_scopes = os.getenv("SPOTIFY_SCOPES", _DEFAULT_SCOPE_STRING)
         scopes: List[str] = []
         for scope in raw_scopes.split(","):

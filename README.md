@@ -54,6 +54,15 @@ This repository now ships with platform-specific PyInstaller specs and helper sc
 ### Android APK (Buildozer)
 Below are opinionated, reproducible steps for turning this Kivy app into an installable Android APK (and optionally an AAB for Play Store) on a Linux host. You already have a Buildozer environment; still, skim the prerequisites to ensure parity.
 
+> Note: `buildozer.spec` is intentionally **not tracked** in this repository to keep packaging configuration local and avoid accidental commits of signing config. Generate your own each time (or keep a private copy) with `buildozer init`, then edit per the table below. If you prefer a reusable template, copy it to `buildozer.spec.local` and add that filename to your personal global gitignore.
+
+Quick recreate if you deleted yours:
+```bash
+rm -f buildozer.spec
+buildozer init
+# Then edit fields: title, package.name, package.domain, version, requirements, android.permissions, android.archs
+```
+
 #### 0. High‑level Overview
 You will:
 1. Install system packages & create a Python venv.
