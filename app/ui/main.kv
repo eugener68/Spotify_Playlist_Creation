@@ -250,7 +250,7 @@
                             write_tab: False
                             hint_text: "One artist per line or separated by commas"
                             height: "130dp"
-                            on_focus: root.update_manual_artists(self.text) if not self.focus else None
+                            on_text: root.update_manual_artists(self.text)
 
                         FieldLabel:
                             text: "Artists file (one artist per line)"

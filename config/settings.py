@@ -3,12 +3,42 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 import os
+import sys
 from typing import List
 
 from dotenv import load_dotenv
 
-load_dotenv()
+
+def _load_env_files() -> None:
+    candidates = []
+
+    candidates.append(Path.cwd() / ".env")
+
+    project_root = Path(__file__).resolve().parents[1]
+    candidates.append(project_root / ".env")
+
+    try:
+        executable = Path(sys.executable).resolve()
+        resources_dir = executable.parent.parent / "Resources"
+        candidates.append(resources_dir / ".env")
+    except Exception:  # pragma: no cover - defensive
+        pass
+
+    bundle_dir = getattr(sys, "_MEIPASS", None)
+    if bundle_dir:
+        candidates.append(Path(bundle_dir) / ".env")
+
+    for path in candidates:
+        try:
+            if path.is_file():
+                load_dotenv(path, override=False)
+        except Exception:  # pragma: no cover - defensive
+            continue
+
+
+_load_env_files()
 
 # Debug helper: if user wants to verify env loading before Settings is built.
 _raw_client_id = os.getenv("SPOTIFY_CLIENT_ID", "")
@@ -78,7 +108,9 @@ class Settings:
         default_max_tracks = int(
             os.getenv("DEFAULT_MAX_TRACKS", "500")
         )
-        default_verbose = os.getenv("DEFAULT_VERBOSE", "false").lower() == "true"
+        default_verbose = (
+            os.getenv("DEFAULT_VERBOSE", "false").lower() == "true"
+        )
         return cls(
             client_id=client_id,
             scopes=scopes,

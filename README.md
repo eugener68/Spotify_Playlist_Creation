@@ -51,6 +51,29 @@ This repository now ships with platform-specific PyInstaller specs and helper sc
 3. **Distribute the bundle** located in `dist/AutoPlaylistBuilder/`. On Windows, copy your `.env` alongside the executable (or adjust baked defaults in `config/settings.py`). On macOS, pass `--bundle-env` during the build or manually add the file inside the generated `.app` under `Contents/Resources/.env`.
 4. **Optional macOS signing:** For public releases, sign and notarise the app (`codesign --deep --force --sign ...` followed by `xcrun notarytool submit`). Skip this step for personal testing.
 
+#### Custom macOS icon
+
+1. Design a square PNG (at least 1024×1024). Save it as `assets/app_icon.png`.
+2. Run the helper commands to generate the `.icns` bundle:
+
+   ```bash
+   mkdir -p assets/AppIcon.iconset
+   sips -z 16 16     assets/app_icon.png --out assets/AppIcon.iconset/icon_16x16.png
+   sips -z 32 32     assets/app_icon.png --out assets/AppIcon.iconset/icon_16x16@2x.png
+   sips -z 32 32     assets/app_icon.png --out assets/AppIcon.iconset/icon_32x32.png
+   sips -z 64 64     assets/app_icon.png --out assets/AppIcon.iconset/icon_32x32@2x.png
+   sips -z 128 128   assets/app_icon.png --out assets/AppIcon.iconset/icon_128x128.png
+   sips -z 256 256   assets/app_icon.png --out assets/AppIcon.iconset/icon_128x128@2x.png
+   sips -z 256 256   assets/app_icon.png --out assets/AppIcon.iconset/icon_256x256.png
+   sips -z 512 512   assets/app_icon.png --out assets/AppIcon.iconset/icon_256x256@2x.png
+   sips -z 512 512   assets/app_icon.png --out assets/AppIcon.iconset/icon_512x512.png
+   cp assets/app_icon.png assets/AppIcon.iconset/icon_512x512@2x.png
+   iconutil -c icns assets/AppIcon.iconset -o assets/app_icon.icns
+   rm -rf assets/AppIcon.iconset
+   ```
+
+3. Re-run `./scripts/build-macos.sh --bundle-env`. The PyInstaller spec now auto-detects `assets/app_icon.icns` and embeds it into the `.app` bundle. If the file is missing, the build falls back to the default icon.
+
 ### Android APK (Buildozer)
 Below are opinionated, reproducible steps for turning this Kivy app into an installable Android APK (and optionally an AAB for Play Store) on a Linux host. You already have a Buildozer environment; still, skim the prerequisites to ensure parity.
 

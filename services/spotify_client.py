@@ -173,18 +173,44 @@ class SpotifyClient:
         artist_id: str,
         limit: int = 10,
     ) -> List[Track]:
-        """Fetch an artist's top tracks."""
+        """Fetch an artist's most popular tracks with graceful fallbacks."""
+        desired = max(0, limit)
         params = {"market": "from_token"}
         data = self._get(f"/artists/{artist_id}/top-tracks", params=params)
-        tracks = []
-        for item in data.get("tracks", [])[:limit]:
-            name = item.get("name", "")
-            track_id = item.get("id", "")
-            artists = [
-                artist.get("name", "")
-                for artist in item.get("artists", [])
-            ]
-            tracks.append(Track(id=track_id, name=name, artists=artists))
+        tracks: List[Track] = []
+        seen_ids = set()
+
+        for item in data.get("tracks", []):
+            track = self._track_from_payload(item)
+            if track.id and track.id not in seen_ids:
+                tracks.append(track)
+                seen_ids.add(track.id)
+            if 0 < desired <= len(tracks):
+                return tracks[:desired]
+
+        if desired and len(tracks) >= desired:
+            return tracks[:desired]
+
+        # Fallback: walk recent albums/singles until we gather enough tracks.
+        for album_id in self._artist_album_ids(artist_id):
+            album_tracks = self._get(
+                f"/albums/{album_id}/tracks",
+                params={"market": "from_token", "limit": 50},
+            )
+            for item in album_tracks.get("items", []):
+                track = self._track_from_payload(item)
+                if not track.id or track.id in seen_ids:
+                    continue
+                # Album cuts already expose participating artists.
+                tracks.append(track)
+                seen_ids.add(track.id)
+                if 0 < desired <= len(tracks):
+                    return tracks[:desired]
+            if desired and len(tracks) >= desired:
+                break
+
+        if desired:
+            return tracks[:desired]
         return tracks
 
     def create_playlist(
@@ -261,7 +287,10 @@ class SpotifyClient:
             params["offset"] = params.get("offset", 0) + params["limit"]
         return uris
 
-    def user_playlists(self, limit: Optional[int] = 100) -> List[PlaylistSummary]:
+    def user_playlists(
+        self,
+        limit: Optional[int] = 100,
+    ) -> List[PlaylistSummary]:
         """Return playlists associated with the current user."""
         playlists: List[PlaylistSummary] = []
         page_limit = 100 if limit is None else min(limit, 100)
@@ -287,6 +316,39 @@ class SpotifyClient:
             params["offset"] = params.get("offset", 0) + params["limit"]
         return playlists
 
+    def _artist_album_ids(self, artist_id: str) -> List[str]:
+        """Return album IDs for the given artist ordered by release."""
+        params = {
+            "include_groups": "album,single,compilation",
+            "market": "from_token",
+            "limit": 50,
+            "offset": 0,
+        }
+        album_ids: List[str] = []
+
+        while True:
+            data = self._get(f"/artists/{artist_id}/albums", params=params)
+            items = data.get("items", [])
+            for item in items:
+                album_id = item.get("id")
+                if album_id and album_id not in album_ids:
+                    album_ids.append(album_id)
+            if not data.get("next"):
+                break
+            params["offset"] = params.get("offset", 0) + params["limit"]
+        return album_ids
+
+    @staticmethod
+    def _track_from_payload(payload: dict) -> Track:
+        name = payload.get("name", "")
+        track_id = payload.get("id", "")
+        artists = [
+            artist.get("name", "")
+            for artist in payload.get("artists", [])
+            if artist.get("name")
+        ]
+        return Track(id=track_id, name=name, artists=artists)
+
     def find_playlist_by_name(
         self,
         name: str,
@@ -305,7 +367,7 @@ class SpotifyClient:
             if candidate == needle:
                 return playlist
             if candidate.startswith(f"{needle} "):
-                suffix = candidate[len(needle) :].strip()
+                suffix = candidate[len(needle):].strip()
                 if date_suffix_pattern.match(suffix):
                     fallback = fallback or playlist
         return fallback

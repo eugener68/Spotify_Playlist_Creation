@@ -15,12 +15,17 @@ else:
 
 PROJECT_ROOT = SPEC_PATH.parent.parent
 APP_NAME = "AutoPlaylistBuilder"
+ICON_PATH = PROJECT_ROOT / "assets" / "app_icon.icns"
+ICON_PNG_PATH = PROJECT_ROOT / "assets" / "app_icon.png"
 
 # Data files that must ship with the binary (KV layout, default settings).
 DATAS = [
     (str(PROJECT_ROOT / "app" / "ui" / "main.kv"), "app/ui"),
     (str(PROJECT_ROOT / "config" / "settings.py"), "config"),
 ]
+
+if ICON_PNG_PATH.exists():
+    DATAS.append((str(ICON_PNG_PATH), "assets"))
 
 # Common Kivy backends that should be bundled so the app runs without debug output.
 HIDDENIMPORTS = [
@@ -95,7 +100,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name=f"{APP_NAME}.app",
-    icon=None,
+    icon=str(ICON_PATH) if ICON_PATH.exists() else None,
     bundle_identifier="com.eugener.autoplaylistbuilder",
     info_plist={
         "NSHighResolutionCapable": True,

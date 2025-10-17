@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import datetime as _dt
 import difflib as _dif
+import heapq
 import random
+import re
 import unicodedata as _ud
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from core.playlist_options import PlaylistOptions
 from services.spotify_client import (
@@ -89,9 +92,9 @@ class PlaylistBuilder:
                 "No tracks could be generated for the playlist."
             )
 
-        if options.shuffle:
+        if options.shuffle and tracks:
             rng = random.Random(options.shuffle_seed)
-            rng.shuffle(tracks)
+            tracks = _shuffle_without_adjacent_artist_runs(tracks, rng)
 
         prepared_uris = self.trim_tracks(
             (self._to_track_uri(track) for track in tracks),
@@ -354,7 +357,7 @@ class PlaylistBuilder:
     ) -> Tuple[List[Track], List[Track], int]:
         dedupe_on_name = options.dedupe_variants
         seen_ids = set()
-        seen_names = set()
+        seen_names: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         selected: List[Track] = []
         skipped: List[Track] = []
         total_tracks_retrieved = 0
@@ -364,10 +367,14 @@ class PlaylistBuilder:
             return selected, skipped, total_tracks_retrieved
 
         for artist in artists:
+            fetch_limit = per_artist_limit
+            if dedupe_on_name:
+                fetch_limit = max(per_artist_limit + 5, per_artist_limit * 2)
+            fetch_limit = max(fetch_limit, per_artist_limit)
             try:
                 top_tracks = self._client.top_tracks_for_artist(
                     artist.id,
-                    limit=per_artist_limit,
+                    limit=fetch_limit,
                 )
             except SpotifyClientError:
                 if options.verbose:
@@ -376,21 +383,34 @@ class PlaylistBuilder:
                     )
                 continue
             total_tracks_retrieved += len(top_tracks)
+            tracks_added_for_artist = 0
             for track in top_tracks:
                 if not track.id:
                     continue
                 if track.id in seen_ids:
                     skipped.append(track)
                     continue
-                normalized_name = track.name.lower()
-                if dedupe_on_name and normalized_name in seen_names:
-                    skipped.append(track)
-                    continue
+                fingerprint: Optional[Tuple[str, ...]] = None
+                if dedupe_on_name:
+                    fingerprint = _artist_fingerprint(track)
+                    normalized = _normalize_track_name(track.name)
+                    if _is_duplicate_variant(
+                        normalized,
+                        seen_names[fingerprint],
+                    ):
+                        skipped.append(track)
+                        continue
                 seen_ids.add(track.id)
                 if dedupe_on_name:
-                    seen_names.add(normalized_name)
+                    fingerprint = fingerprint or _artist_fingerprint(track)
+                    normalized = _normalize_track_name(track.name)
+                    if normalized:
+                        seen_names[fingerprint].append(normalized)
                 selected.append(track)
+                tracks_added_for_artist += 1
                 if 0 < options.max_tracks <= len(selected):
+                    break
+                if tracks_added_for_artist >= per_artist_limit:
                     break
             if 0 < options.max_tracks <= len(selected):
                 break
@@ -418,6 +438,123 @@ class PlaylistBuilder:
         print("Playlist build stats:")
         for line in stats.lines():
             print(f"  {line}")
+
+
+def _shuffle_without_adjacent_artist_runs(
+    tracks: Sequence[Track],
+    rng: random.Random,
+) -> List[Track]:
+    if len(tracks) <= 1:
+        return list(tracks)
+    buckets: Dict[str, List[Track]] = defaultdict(list)
+    for track in tracks:
+        buckets[_primary_artist(track)].append(track)
+    for entries in buckets.values():
+        rng.shuffle(entries)
+    heap: List[Tuple[int, float, str]] = []
+    for artist, entries in buckets.items():
+        if not entries:
+            continue
+        heapq.heappush(heap, (-len(entries), rng.random(), artist))
+    result: List[Track] = []
+    prev_artist: Optional[str] = None
+    while heap:
+        count, _, artist = heapq.heappop(heap)
+        if artist == prev_artist and heap:
+            heapq.heappush(heap, (count, rng.random(), artist))
+            count, _, artist = heapq.heappop(heap)
+        track_list = buckets[artist]
+        track = track_list.pop()
+        result.append(track)
+        prev_artist = artist
+        if track_list:
+            heapq.heappush(
+                heap,
+                (-len(track_list), rng.random(), artist),
+            )
+    return result
+
+
+def _is_duplicate_variant(
+    candidate: str,
+    existing: Sequence[str],
+) -> bool:
+    if not candidate:
+        return False
+    if candidate in existing:
+        return True
+    for entry in existing:
+        if not entry:
+            continue
+        similarity = _dif.SequenceMatcher(None, candidate, entry).ratio()
+        if similarity >= 0.92:
+            return True
+        cand_tokens = _token_signature(candidate)
+        entry_tokens = _token_signature(entry)
+        if cand_tokens and cand_tokens == entry_tokens:
+            return True
+        if (
+            _is_subset_phrase(candidate, entry)
+            or _is_subset_phrase(entry, candidate)
+        ):
+            return True
+    return False
+
+
+def _normalize_track_name(name: str) -> str:
+    text = name.casefold()
+    text = _strip_accents(text)
+    text = text.replace("ё", "е")
+    text = re.sub(r"[""“”«»]", "", text)
+    text = re.sub(r"[()\[\]{}]", " ", text)
+    text = re.sub(
+        (
+            r"\s*[-–—]\s*("
+            r"remaster(?:ed)?|live|bonus|edit|mix|version|single|"
+            r"ost|from|из"
+            r")\b.*"
+        ),
+        "",
+        text,
+    )
+    text = re.sub(r"\s+feat\.?\b.*", "", text)
+    text = re.sub(r"\s*[-–—~]\s*", " ", text)
+    text = re.sub(
+        r"\b(acoustic|instrumental|karaoke|mashup|live|orchestral|"
+        r"symphonic|bonus|edit|mix|version|explicit)\b",
+        "",
+        text,
+    )
+    text = re.sub(r"[^0-9a-zа-яёіїґ]+", " ", text)
+    return " ".join(text.split())
+
+
+def _primary_artist(track: Track) -> str:
+    return track.artists[0] if track.artists else ""
+
+
+def _artist_fingerprint(track: Track) -> Tuple[str, ...]:
+    names = [name.casefold() for name in track.artists if name]
+    if not names:
+        return ("",)
+    return tuple(sorted(names))
+
+
+def _token_signature(text: str) -> Tuple[str, ...]:
+    if not text:
+        return ()
+    tokens = sorted(set(token for token in text.split() if token))
+    return tuple(tokens)
+
+
+def _is_subset_phrase(a: str, b: str) -> bool:
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    if a in b and len(a) >= max(4, len(b) * 0.6):
+        return True
+    return False
 
 
 def _strip_accents(value: str) -> str:

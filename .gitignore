@@ -222,3 +222,7 @@ bin/
 *.jks
 *.keystore
 keystore.properties
+
+# Project secrets
+google_secret.json
+ytmusic_oauth.json

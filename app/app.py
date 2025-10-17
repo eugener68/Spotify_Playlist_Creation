@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+import sys
 from typing import Optional, Sequence
 
 from kivy.app import App
@@ -14,6 +15,7 @@ from kivy.uix.button import Button
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
+from kivy.uix.filechooser import FileChooserListView
 from kivy.metrics import dp
 from kivy.graphics import Color, RoundedRectangle
 from app.controllers.auth_controller import AuthController
@@ -23,6 +25,29 @@ from app.state.app_state import AppState
 from config.settings import settings
 
 KV_FILE = Path(__file__).parent / "ui" / "main.kv"
+ASSET_ICON = "assets/app_icon.png"
+
+
+def _resolve_asset(path: str) -> Optional[str]:
+    candidates = []
+    base_dir = Path(__file__).resolve().parents[1]
+    candidates.append(base_dir / path)
+
+    bundle_dir = getattr(sys, "_MEIPASS", None)
+    if bundle_dir:
+        candidates.append(Path(bundle_dir) / path)
+
+    try:
+        executable = Path(sys.executable).resolve()
+        resources_dir = executable.parent.parent / "Resources"
+        candidates.append(resources_dir / path)
+    except Exception:  # pragma: no cover - defensive
+        pass
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return None
 
 
 class RootScreen(Screen):
@@ -98,46 +123,63 @@ class RootScreen(Screen):
 
     def browse_artists_file(self) -> None:
         """Open a file browser to select an artists file."""
-        try:
-            import tkinter as tk
-            from tkinter import filedialog
-            
-            # Create a temporary root window (hidden)
-            root = tk.Tk()
-            root.withdraw()  # Hide the root window
-            root.attributes('-topmost', True)  # Bring to front
-            
-            # Open file dialog
-            file_path = filedialog.askopenfilename(
-                title="Select Artists File",
-                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
-            )
-            root.destroy()  # Clean up
-            
-            if file_path:
+        start_path = self._state.playlist_options.artists_file
+        if start_path:
+            initial_dir = Path(start_path).expanduser().parent
+        else:
+            initial_dir = Path.home()
+
+        chooser = FileChooserListView(
+            path=str(initial_dir),
+            filters=["*.txt", "*.*"],
+        )
+        chooser.multiselect = False
+        if start_path:
+            chooser.selection = [str(Path(start_path).expanduser())]
+
+        content = BoxLayout(
+            orientation="vertical",
+            spacing=dp(12),
+            padding=dp(16),
+        )
+        content.add_widget(chooser)
+
+        buttons = BoxLayout(
+            orientation="horizontal",
+            spacing=dp(12),
+            size_hint_y=None,
+            height=dp(44),
+        )
+
+        popup = Popup(
+            title="Select Artists File",
+            content=content,
+            size_hint=(0.9, 0.9),
+            auto_dismiss=False,
+        )
+
+        def _use_selection(*_args):
+            if chooser.selection:
+                file_path = chooser.selection[0]
                 self._state.playlist_options.artists_file = file_path
-                # Update the text input widget
                 artists_file_input = self.ids.get("artists_file_input")
                 if artists_file_input is not None:
                     artists_file_input.text = file_path
-                    
-        except ImportError:
-            # Fallback if tkinter is not available - show instructions
-            from kivy.uix.popup import Popup
-            from kivy.uix.label import Label
-            content = Label(
-                text=(
-                    "File Browser Not Available\n\n"
-                    "Either paste artist names into the Manual artists field\n"
-                    "(one name per line or separated by commas) or create a text file with:\n\n"
-                    "Metallica\nScorpions\nA-ha\n# Comments start with #\n\n"
-                    "One artist name per line."
-                ),
-                text_size=(450, None),
-                halign="center"
-            )
-            popup = Popup(title="Artists File Format", content=content, size_hint=(0.8, 0.7))
-            popup.open()
+            popup.dismiss()
+
+        def _cancel(*_args):
+            popup.dismiss()
+
+        use_button = Button(text="Use File")
+        use_button.bind(on_release=_use_selection)
+        cancel_button = Button(text="Cancel")
+        cancel_button.bind(on_release=_cancel)
+
+        buttons.add_widget(use_button)
+        buttons.add_widget(cancel_button)
+        content.add_widget(buttons)
+
+        popup.open()
 
     def trigger_build(self, dry_run: bool) -> None:
         controller = self._app.playlist_controller
@@ -184,7 +226,7 @@ class RootScreen(Screen):
         )
 
         with content.canvas.before:
-            bg_color = Color(1, 1, 1, 1)
+            Color(1, 1, 1, 1)
             bg_rect = RoundedRectangle(
                 radius=[dp(12)],
                 pos=content.pos,
@@ -224,7 +266,10 @@ class RootScreen(Screen):
         popup.content = content
 
         def _update_popup_size(*_args):
-            popup.height = min(dp(520), label.height + close_button.height + dp(160))
+            popup.height = min(
+                dp(520),
+                label.height + close_button.height + dp(160),
+            )
 
         label.bind(texture_size=lambda *_: _update_popup_size())
         popup.bind(on_open=lambda *_: _update_popup_size())
@@ -262,7 +307,9 @@ class RootScreen(Screen):
         if granted_scope_label is not None:
             if state.granted_scope:
                 granted_scope_text = ", ".join(state.granted_scope.split())
-                granted_scope_label.text = f"Granted scopes: {granted_scope_text}"
+                granted_scope_label.text = (
+                    f"Granted scopes: {granted_scope_text}"
+                )
             else:
                 granted_scope_label.text = "Granted scopes: (pending sign-in)"
         dashboard_button = ids.get("dashboard_button")
@@ -392,6 +439,9 @@ class AutoPlaylistBuilder(App):
         self.auth_controller = AuthController(self)
         self.playlist_controller = PlaylistController(self)
         Builder.load_file(str(KV_FILE))
+        icon_path = _resolve_asset(ASSET_ICON)
+        if icon_path:
+            self.icon = icon_path
         manager = RootScreenManager()
         manager.add_widget(RootScreen(name="home"))
         return manager

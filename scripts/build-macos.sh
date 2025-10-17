@@ -40,6 +40,12 @@ fi
 
 export KIVY_NO_ARGS=1
 
+if ! "$PYTHON_BIN" -c "import importlib; importlib.import_module('PyInstaller')" >/dev/null 2>&1; then
+  echo "PyInstaller is not installed for $PYTHON_BIN." >&2
+  echo "Install it with: $PYTHON_BIN -m pip install pyinstaller" >&2
+  exit 1
+fi
+
 if (( ${#PYINSTALLER_ARGS[@]} )); then
   "$PYTHON_BIN" -m PyInstaller "${PYINSTALLER_ARGS[@]}" "$SPEC"
 else
