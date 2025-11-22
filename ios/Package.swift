@@ -44,6 +44,10 @@ let package = Package(
             resources: [
                 .process("Fixtures")
             ]
+        ),
+        .testTarget(
+            name: "SpotifyAPIKitTests",
+            dependencies: ["SpotifyAPIKit"]
         )
     ]
 )
