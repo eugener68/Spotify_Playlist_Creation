@@ -146,6 +146,50 @@ ENV/
 env.bak/
 venv.bak/
 
+# macOS / OS cruft
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+.Spotlight-V100
+.Trashes
+
+# Editor / IDE metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# SwiftPM & Xcode build artifacts
+.build/
+.swiftpm/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+xcuserdata/
+
+# Simulator/device artifacts
+*.ipa
+*.dSYM
+dSYMs/
+
+# iOS workspace caches
+ios/.build/
+ios/.swiftpm/
+ios/DerivedData/
+
+# Python virtualenvs created by tooling scripts
+.python-version
+.direnv/
+
+# Misc tooling caches
+.cache/
+.sass-cache/
+node_modules/
+*.log
+
 # Spyder project settings
 .spyderproject
 .spyproject
