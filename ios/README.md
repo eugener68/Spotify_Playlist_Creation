@@ -40,12 +40,23 @@ swift test --filter PlaylistBuilderTests/testFixtureAManualArtistsDryRun
 - `AppDependencies.live(configuration:tokenProvider:)` wires a concrete client into `PlaylistBuilder` so SwiftUI views only need to supply a token provider after OAuth completes.
 - `SpotifyAPIKitTests/SpotifyAPIClientTests` cover JSON decoding and error propagation using a custom `URLProtocol` stub. Add more tests as new endpoints land.
 - PKCE support lives in `SpotifyPKCEAuthenticator`. Call `makeAuthorizationSession()` to build the authorise URL for `ASWebAuthenticationSession`, then pass the returned `codeVerifier` into `exchangeCode(_:codeVerifier:)` once you receive the redirect callback.
-- Persist tokens with `SpotifyTokenStore` implementations (Keychain-backed or in-memory). Use `RefreshingAccessTokenProvider` to reuse/refresh tokens automatically; this is what `AppDependencies.liveWithPKCE` wires up for you.
+- Persist tokens with `SpotifyTokenStore` implementations (Keychain-backed or in-memory). Use `RefreshingAccessTokenProvider` to reuse/refresh tokens automatically; `AppDependencies.liveUsingKeychain` provisions a `KeychainTokenStore` for production builds while previews still rely on the in-memory store.
+- SwiftUI hosts can now initialize `RootView(configuration:keychainService:keychainAccount:)` to automatically spin up PKCE + Keychain wiring without touching `AppDependencies` directly.
 - Tests under `SpotifyAPIKitTests/PKCETests` + `RefreshingAccessTokenProviderTests` ensure challenge generation and refresh behavior stay deterministic. Extend them as additional grant types or storage strategies are added.
+- When building on Apple platforms, `SpotifyAPIKitTests/KeychainTokenStoreTests` verifies the Keychain-backed token store can save, load, and clear credentials.
 
 ## Next Steps
 
 1. Flesh out the PKCE implementation inside `SpotifyAPIKit` and connect it to `AuthenticationServices` from your iOS app target.
 2. Port the playlist builder logic from `core/playlist_builder.py` into `DomainKit` using the fixtures defined in `Refactoring.md` Section 10.
-3. Create an Xcode app project that consumes `AppFeature` and hosts the SwiftUI views described in the product spec.
-4. Wire the GitHub Actions workflow (Section 12 of `Refactoring.md`) to run `swift test` from this directory.
+3. Extend the `AutoPlaylistBuilderApp` Xcode project to add production UI polish (app icon, onboarding, etc.) as you iterate beyond the scaffold.
+4. A GitHub Actions workflow (`.github/workflows/ios-swift-tests.yml`) now runs `swift test` from this directory on pushes and pull requests; it also builds the new iOS app target via `xcodebuild` on an iPhone simulator.
+
+## AutoPlaylistBuilderApp (SwiftUI app)
+
+The `App/AutoPlaylistBuilderApp` directory contains a ready-to-run SwiftUI app that embeds the `AppFeature` package:
+
+- Open `App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp.xcodeproj` in Xcode 15+, select the **AutoPlaylistBuilderApp** scheme, and choose an iOS 17+ simulator.
+- Copy `App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp/Resources/AppSecrets.example.plist` to `AppSecrets.plist`, then fill in your Spotify Client ID, redirect URI, and scopes. The example file stays in the bundle for previews; the real secrets file is ignored via `.gitignore`.
+- Update `Info.plist` (URL types) so the redirect scheme matches the one registered on the Spotify dashboard.
+- The `RootView(configuration:keychainService:keychainAccount:)` convenience initializer is used inside `AutoPlaylistBuilderApp.swift`, so tokens persist automatically via the Keychain-backed dependency wiring.

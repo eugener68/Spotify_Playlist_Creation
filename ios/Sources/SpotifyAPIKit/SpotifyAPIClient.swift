@@ -111,8 +111,8 @@ extension SpotifyAPIClient: SpotifyArtistProviding {
             URLQueryItem(name: "limit", value: String(limit))
         ]
         let request = try await authorizedRequest(path: "/search", queryItems: queryItems)
-    let response: SearchArtistsResponse = try await send(request)
-    return response.artists.items
+        let response: SearchArtistsResponse = try await send(request)
+        return response.artists.items
     }
 
     public func artist(byID id: String) async throws -> SpotifyArtist {
@@ -123,8 +123,8 @@ extension SpotifyAPIClient: SpotifyArtistProviding {
     public func topArtists(limit: Int) async throws -> [SpotifyArtist] {
         let queryItems = [URLQueryItem(name: "limit", value: String(limit))]
         let request = try await authorizedRequest(path: "/me/top/artists", queryItems: queryItems)
-    let response: PagedArtistsResponse = try await send(request)
-    return response.items
+        let response: PagedArtistsResponse = try await send(request)
+        return response.items
     }
 
     public func followedArtists(limit: Int) async throws -> [SpotifyArtist] {
@@ -174,6 +174,82 @@ extension SpotifyAPIClient: SpotifyPlaylistEditing {
         let response: CreatePlaylistResponse = try await send(request)
         return response.id
     }
+
+    public func findPlaylist(named name: String, ownerID: String) async throws -> SpotifyPlaylistSummary? {
+        var request = try await authorizedRequest(
+            path: "/me/playlists",
+            queryItems: [URLQueryItem(name: "limit", value: "50")]
+        )
+
+        while true {
+            let response: UserPlaylistsResponse = try await send(request)
+            if let match = response.items.first(where: { playlist in
+                playlist.name.caseInsensitiveCompare(name) == .orderedSame && (playlist.owner.id ?? "") == ownerID
+            }) {
+                return SpotifyPlaylistSummary(
+                    id: match.id,
+                    name: match.name,
+                    ownerID: match.owner.id ?? "",
+                    trackCount: match.tracks.total
+                )
+            }
+
+            guard let next = response.next, let nextURL = URL(string: next) else {
+                break
+            }
+            request = try await authorizedRequest(absoluteURL: nextURL)
+        }
+        return nil
+    }
+
+    public func playlistTracks(playlistID: String) async throws -> [String] {
+        var collected: [String] = []
+        var request = try await authorizedRequest(
+            path: "/playlists/\(playlistID)/tracks",
+            queryItems: [URLQueryItem(name: "limit", value: "100")]
+        )
+
+        while true {
+            let response: PlaylistTracksResponse = try await send(request)
+            collected.append(contentsOf: response.items.compactMap { $0.track?.uri })
+            guard let next = response.next, let nextURL = URL(string: next) else {
+                break
+            }
+            request = try await authorizedRequest(absoluteURL: nextURL)
+        }
+        return collected
+    }
+
+    public func replacePlaylistTracks(playlistID: String, uris: [String]) async throws {
+        struct PlaylistTracksRequest: Encodable { let uris: [String] }
+
+        guard !uris.isEmpty else {
+            let request = try await authorizedRequest(path: "/playlists/\(playlistID)/tracks", method: .put)
+            _ = try await send(request)
+            return
+        }
+
+        let chunks = uris.chunked(into: 100)
+        if let first = chunks.first {
+            let request = try await authorizedRequest(
+                path: "/playlists/\(playlistID)/tracks",
+                method: .put,
+                body: try jsonEncoder.encode(PlaylistTracksRequest(uris: first))
+            )
+            _ = try await send(request)
+        }
+
+        if chunks.count > 1 {
+            for chunk in chunks.dropFirst() {
+                let request = try await authorizedRequest(
+                    path: "/playlists/\(playlistID)/tracks",
+                    method: .post,
+                    body: try jsonEncoder.encode(PlaylistTracksRequest(uris: chunk))
+                )
+                _ = try await send(request)
+            }
+        }
+    }
 }
 
 // MARK: - Request Helpers
@@ -209,6 +285,23 @@ private extension SpotifyAPIClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
+        let token = try await tokenProvider.accessToken()
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        return request
+    }
+
+    func authorizedRequest(
+        absoluteURL url: URL,
+        method: HTTPMethod = .get,
+        body: Data? = nil
+    ) async throws -> URLRequest {
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         let token = try await tokenProvider.accessToken()
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         return request
@@ -279,4 +372,43 @@ private struct FollowedArtistResponse: Decodable {
 
 private struct TopTracksResponse: Decodable {
     let tracks: [SpotifyTrack]
+}
+
+private struct UserPlaylistsResponse: Decodable {
+    struct Playlist: Decodable {
+        struct Owner: Decodable { let id: String? }
+        struct Tracks: Decodable { let total: Int }
+
+        let id: String
+        let name: String
+        let owner: Owner
+        let tracks: Tracks
+    }
+
+    let items: [Playlist]
+    let next: String?
+}
+
+private struct PlaylistTracksResponse: Decodable {
+    struct PlaylistTrackItem: Decodable {
+        struct Track: Decodable { let uri: String? }
+        let track: Track?
+    }
+
+    let items: [PlaylistTrackItem]
+    let next: String?
+}
+
+private extension Array where Element == String {
+    func chunked(into size: Int) -> [[String]] {
+        guard size > 0 else { return [self] }
+        var chunks: [[String]] = []
+        var index = 0
+        while index < count {
+            let end = Swift.min(index + size, count)
+            chunks.append(Array(self[index ..< end]))
+            index = end
+        }
+        return chunks
+    }
 }

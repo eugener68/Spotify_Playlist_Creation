@@ -143,6 +143,8 @@ celerybeat.pid
 env/
 venv/
 ENV/
+.DS_Store
+ios/App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp/Resources/AppSecrets.plist
 env.bak/
 venv.bak/
 

@@ -50,6 +50,7 @@ public struct PlaylistResult: Sendable {
     public let playlistName: String
     public let preparedTrackURIs: [String]
     public let addedTrackURIs: [String]
+    public let finalUploadURIs: [String]
     public let displayTracks: [String]
     public let dryRun: Bool
     public let reusedExisting: Bool
@@ -78,23 +79,43 @@ public protocol SpotifyPlaylistEditing: Sendable {
         description: String,
         isPublic: Bool
     ) async throws -> String
+    func findPlaylist(named name: String, ownerID: String) async throws -> SpotifyPlaylistSummary?
+    func playlistTracks(playlistID: String) async throws -> [String]
+    func replacePlaylistTracks(playlistID: String, uris: [String]) async throws
 }
 
 public struct SpotifyUserProfile: Codable, Equatable, Sendable {
     public let id: String
     public let displayName: String?
     public let email: String?
+
+    public init(id: String, displayName: String?, email: String?) {
+        self.id = id
+        self.displayName = displayName
+        self.email = email
+    }
 }
 
 public struct SpotifyArtist: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public let name: String
+
+    public init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
 }
 
 public struct SpotifyTrack: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public let name: String
     public let artists: [SpotifyArtist]
+
+    public init(id: String, name: String, artists: [SpotifyArtist]) {
+        self.id = id
+        self.name = name
+        self.artists = artists
+    }
 }
 
 public struct PlaylistBuilderContext: Sendable {
@@ -159,35 +180,109 @@ public actor PlaylistBuilder {
             allowDeduplication: options.dedupeVariants
         )
 
-        let truncatedTracks = Array(dedupeResult.uniqueTracks.prefix(options.maxTracks))
+        let variantFilterResult: VariantFilterResult
+        if options.preferOriginalTracks {
+            variantFilterResult = Self.removeVariantVersions(from: dedupeResult.uniqueTracks)
+        } else {
+            variantFilterResult = VariantFilterResult(tracks: dedupeResult.uniqueTracks, removedCount: 0)
+        }
+
+        let truncatedTracks = Array(variantFilterResult.tracks.prefix(options.maxTracks))
+        let fallbackSeed = Self.shuffleSeed(from: context.timestamp)
         let shuffledTracks = Self.applyShuffleIfNeeded(
             truncatedTracks,
             shuffle: options.shuffle,
             seed: options.shuffleSeed,
-            fallbackSeed: UInt64(context.timestamp.timeIntervalSince1970)
+            fallbackSeed: fallbackSeed
         )
 
         let preparedURIs = shuffledTracks.map { "spotify:track:\($0.id)" }
         let displayTracks = shuffledTracks.map { Self.displayString(for: $0) }
-        let totalUploaded = options.dryRun ? 0 : preparedURIs.count
+        var playlistID: String?
+        var addedTrackURIs = preparedURIs
+        var reusedExisting = false
+        var uploadURIs = preparedURIs
+        var totalUploaded = options.dryRun ? 0 : preparedURIs.count
+
+        if options.reuseExisting {
+            guard let playlistEditor = dependencies.playlistEditor else {
+                throw PlaylistBuilderError.missingDependencies
+            }
+            let profile = try await dependencies.profileProvider.currentUser()
+            guard !profile.id.isEmpty else {
+                throw PlaylistBuilderError.missingUserID
+            }
+
+            if let existing = try await playlistEditor.findPlaylist(named: resolvedPlaylistName, ownerID: profile.id) {
+                reusedExisting = true
+                playlistID = existing.id
+                let existingURIs = try await playlistEditor.playlistTracks(playlistID: existing.id)
+                let existingSet = Set(existingURIs)
+                addedTrackURIs = preparedURIs.filter { !existingSet.contains($0) }
+
+                if options.truncate {
+                    uploadURIs = Array(preparedURIs.prefix(options.maxTracks))
+                    totalUploaded = options.dryRun ? 0 : uploadURIs.count
+                } else {
+                    let remainingExisting = Self.remainingExistingTracks(existingURIs, excluding: preparedURIs)
+                    uploadURIs = preparedURIs + remainingExisting
+                    totalUploaded = options.dryRun ? 0 : addedTrackURIs.count
+                }
+
+                uploadURIs = Self.applyShuffleIfNeeded(
+                    uploadURIs,
+                    shuffle: options.shuffle,
+                    seed: options.shuffleSeed,
+                    fallbackSeed: fallbackSeed
+                )
+
+                if options.truncate {
+                    uploadURIs = Array(uploadURIs.prefix(options.maxTracks))
+                }
+
+                if !options.dryRun {
+                    try await playlistEditor.replacePlaylistTracks(playlistID: existing.id, uris: uploadURIs)
+                }
+            } else if !options.dryRun {
+                playlistID = try await createPlaylist(
+                    named: resolvedPlaylistName,
+                    description: "AutoPlaylistBuilder",
+                    profileProvider: dependencies.profileProvider,
+                    playlistEditor: playlistEditor,
+                    tracks: uploadURIs
+                )
+            }
+        } else if !options.dryRun {
+            guard let playlistEditor = dependencies.playlistEditor else {
+                throw PlaylistBuilderError.missingDependencies
+            }
+            playlistID = try await createPlaylist(
+                named: resolvedPlaylistName,
+                description: "Spotify Playlist Builder",
+                profileProvider: dependencies.profileProvider,
+                playlistEditor: playlistEditor,
+                tracks: uploadURIs
+            )
+        }
 
         let stats = PlaylistStats(
             playlistName: resolvedPlaylistName,
             artistsRetrieved: resolvedArtists.count,
             topTracksRetrieved: trackResolution.topTracksRetrieved,
-            variantsDeduped: dedupeResult.dedupedCount,
+            variantsDeduped: dedupeResult.dedupedCount + variantFilterResult.removedCount,
             totalPrepared: preparedURIs.count,
             totalUploaded: totalUploaded
         )
 
         return PlaylistResult(
-            playlistID: nil,
+            playlistID: playlistID,
             playlistName: resolvedPlaylistName,
             preparedTrackURIs: preparedURIs,
-            addedTrackURIs: preparedURIs,
+            addedTrackURIs: addedTrackURIs,
+            finalUploadURIs: uploadURIs,
             displayTracks: displayTracks,
             dryRun: options.dryRun,
-            reusedExisting: false,
+            reusedExisting: reusedExisting,
             stats: stats
         )
     }
@@ -217,16 +312,31 @@ private extension PlaylistBuilder {
             .filter { !$0.isEmpty }
     }
 
+    static func shuffleSeed(from timestamp: Date) -> UInt64 {
+        let microseconds = UInt64(timestamp.timeIntervalSince1970 * 1_000_000)
+        return microseconds == 0 ? 0xABCDEF : microseconds
+    }
+
     func resolveManualArtists(
         _ queries: [String],
         maxArtists: Int,
         artistProvider: SpotifyArtistProviding
     ) async throws -> [SpotifyArtist] {
         var resolved: [SpotifyArtist] = []
-        for query in queries {
-            let results = try await artistProvider.searchArtists(query, limit: 1)
-            if let artist = results.first {
-                resolved.append(artist)
+        for rawQuery in queries {
+            let query = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !query.isEmpty else { continue }
+            let searchQueries = Self.artistSearchQueries(for: query)
+            var matchedArtist: SpotifyArtist?
+            for searchQuery in searchQueries {
+                let results = try await artistProvider.searchArtists(searchQuery, limit: Self.manualArtistSearchLimit)
+                if let bestMatch = Self.bestArtistMatch(for: query, in: results) {
+                    matchedArtist = bestMatch
+                    break
+                }
+            }
+            if let matchedArtist {
+                resolved.append(matchedArtist)
             }
             if resolved.count >= maxArtists {
                 break
@@ -272,6 +382,101 @@ private extension PlaylistBuilder {
         return (unique, dedupedCount)
     }
 
+    static func removeVariantVersions(from tracks: [SpotifyTrack]) -> VariantFilterResult {
+        guard !tracks.isEmpty else {
+            return VariantFilterResult(tracks: tracks, removedCount: 0)
+        }
+        var bestByKey: [VariantKey: (track: SpotifyTrack, score: Int)] = [:]
+        for track in tracks {
+            let key = VariantKey(artists: canonicalArtistKey(for: track.artists), title: canonicalTrackTitle(for: track.name))
+            let score = variantScore(for: track.name)
+            if let current = bestByKey[key] {
+                if score < current.score {
+                    bestByKey[key] = (track, score)
+                }
+            } else {
+                bestByKey[key] = (track, score)
+            }
+        }
+        var keptKeys = Set<VariantKey>()
+        var filtered: [SpotifyTrack] = []
+        for track in tracks {
+            let key = VariantKey(artists: canonicalArtistKey(for: track.artists), title: canonicalTrackTitle(for: track.name))
+            guard let best = bestByKey[key] else { continue }
+            if best.track.id == track.id && !keptKeys.contains(key) {
+                filtered.append(track)
+                keptKeys.insert(key)
+            }
+        }
+        return VariantFilterResult(tracks: filtered, removedCount: tracks.count - filtered.count)
+    }
+
+    static func canonicalArtistKey(for artists: [SpotifyArtist]) -> String {
+        artists
+            .map { normalizeArtistName($0.name) }
+            .joined(separator: ",")
+    }
+
+    static func canonicalTrackTitle(for title: String) -> String {
+        var lowered = title.lowercased()
+        lowered = stripVariantParentheticals(from: lowered)
+        lowered = stripVariantSuffix(from: lowered)
+        lowered = lowered.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+        return lowered.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func variantScore(for title: String) -> Int {
+        let lower = title.lowercased()
+        var score = 0
+        for keyword in variantKeywords {
+            if lower.contains(keyword) {
+                score += 10
+            }
+        }
+        if lower.contains("(") || lower.contains("[") {
+            score += 1
+        }
+        if lower.contains(" - ") || lower.contains(" – ") || lower.contains(" — ") {
+            score += 1
+        }
+        return score
+    }
+
+    static func stripVariantParentheticals(from text: String) -> String {
+        var result = text
+        var currentIndex = result.startIndex
+        while currentIndex < result.endIndex {
+            guard let openIndex = result[currentIndex...].firstIndex(where: { $0 == "(" || $0 == "[" }) else { break }
+            let closingChar: Character = result[openIndex] == "(" ? ")" : "]"
+            guard let closeIndex = result[openIndex...].firstIndex(of: closingChar) else { break }
+            let content = result[result.index(after: openIndex)..<closeIndex]
+            if containsVariantKeyword(in: String(content)) {
+                result.removeSubrange(openIndex...closeIndex)
+                currentIndex = result.startIndex
+            } else {
+                currentIndex = result.index(after: closeIndex)
+            }
+        }
+        return result
+    }
+
+    static func stripVariantSuffix(from text: String) -> String {
+        for delimiter in [" - ", " – ", " — ", ": "] {
+            if let range = text.range(of: delimiter) {
+                let suffix = text[range.upperBound...]
+                if containsVariantKeyword(in: String(suffix)) {
+                    return String(text[..<range.lowerBound])
+                }
+            }
+        }
+        return text
+    }
+
+    static func containsVariantKeyword(in text: String) -> Bool {
+        let lower = text.lowercased()
+        return variantKeywords.contains(where: { lower.contains($0) })
+    }
+
     static func applyShuffleIfNeeded(
         _ tracks: [SpotifyTrack],
         shuffle: Bool,
@@ -289,9 +494,112 @@ private extension PlaylistBuilder {
         return tracks.shuffled(using: &generator)
     }
 
+    static func applyShuffleIfNeeded(
+        _ uris: [String],
+        shuffle: Bool,
+        seed: Int?,
+        fallbackSeed: UInt64
+    ) -> [String] {
+        guard shuffle else { return uris }
+        let resolvedSeed: UInt64
+        if let seed {
+            resolvedSeed = UInt64(bitPattern: Int64(seed))
+        } else {
+            resolvedSeed = fallbackSeed == 0 ? 0xABCDEF : fallbackSeed
+        }
+        var generator = SeededRandomNumberGenerator(seed: resolvedSeed)
+        return uris.shuffled(using: &generator)
+    }
+
     static func displayString(for track: SpotifyTrack) -> String {
         let artistNames = track.artists.map { $0.name }.joined(separator: ", ")
         return "\(artistNames) – \(track.name)"
+    }
+
+    private static let manualArtistSearchLimit = 5
+    private static let variantKeywords: [String] = [
+        "remaster",
+        "remix",
+        "mix",
+        "live",
+        "acoustic",
+        "karaoke",
+        "instrumental",
+        "edit",
+        "version"
+    ]
+
+    static func artistSearchQueries(for query: String) -> [String] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        let quoted = "\"\(trimmed)\""
+        let advanced = "artist:\(quoted)"
+        if trimmed.hasPrefix("artist:") {
+            return [trimmed]
+        }
+        if advanced == trimmed {
+            return [trimmed]
+        }
+        return [advanced, trimmed]
+    }
+
+    static func bestArtistMatch(for query: String, in candidates: [SpotifyArtist]) -> SpotifyArtist? {
+        guard !candidates.isEmpty else { return nil }
+        let normalizedQuery = normalizeArtistName(query)
+        let normalizedCandidates = candidates.map { ($0, normalizeArtistName($0.name)) }
+        if let exact = normalizedCandidates.first(where: { $0.1 == normalizedQuery }) {
+            return exact.0
+        }
+        if let prefix = normalizedCandidates.first(where: { $0.1.hasPrefix(normalizedQuery + " ") }) {
+            return prefix.0
+        }
+        if let contains = normalizedCandidates.first(where: { $0.1.contains(normalizedQuery) }) {
+            return contains.0
+        }
+        return candidates.first
+    }
+
+    static func normalizeArtistName(_ name: String) -> String {
+        let locale = Locale(identifier: "en_US_POSIX")
+        let folded = name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: locale)
+        return folded
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
+    }
+
+    static func remainingExistingTracks(_ existing: [String], excluding prepared: [String]) -> [String] {
+        let preparedSet = Set(prepared)
+        var seen = preparedSet
+        var result: [String] = []
+        for uri in existing {
+            if seen.insert(uri).inserted {
+                result.append(uri)
+            }
+        }
+        return result
+    }
+
+    func createPlaylist(
+        named name: String,
+        description: String,
+        profileProvider: SpotifyProfileProviding,
+        playlistEditor: SpotifyPlaylistEditing,
+        tracks: [String]
+    ) async throws -> String {
+        let profile = try await profileProvider.currentUser()
+        guard !profile.id.isEmpty else {
+            throw PlaylistBuilderError.missingUserID
+        }
+        let playlistID = try await playlistEditor.createPlaylist(
+            userID: profile.id,
+            name: name,
+            description: description,
+            isPublic: false
+        )
+        if !tracks.isEmpty {
+            try await playlistEditor.replacePlaylistTracks(playlistID: playlistID, uris: tracks)
+        }
+        return playlistID
     }
 
     static let dateFormatter: DateFormatter = {
@@ -314,4 +622,14 @@ private struct SeededRandomNumberGenerator: RandomNumberGenerator {
         state = 2862933555777941757 &* state &+ 3037000493
         return state
     }
+}
+
+private struct VariantFilterResult {
+    let tracks: [SpotifyTrack]
+    let removedCount: Int
+}
+
+private struct VariantKey: Hashable {
+    let artists: String
+    let title: String
 }

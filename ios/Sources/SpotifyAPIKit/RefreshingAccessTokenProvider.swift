@@ -39,6 +39,11 @@ public actor RefreshingAccessTokenProvider: SpotifyAccessTokenProviding {
         return token
     }
 
+    public func clear() async throws {
+        try await tokenStore.clear()
+        cachedToken = nil
+    }
+
     private func refreshIfNeeded(token: SpotifyTokenSet?) async throws -> SpotifyTokenSet {
         guard let token else {
             throw SpotifyAPIError.unauthorized

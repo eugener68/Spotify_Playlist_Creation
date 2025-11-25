@@ -16,6 +16,14 @@ public struct SpotifyTokenResponse: Codable, Equatable, Sendable {
     public let scope: String?
     public let expiresIn: TimeInterval
     public let refreshToken: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case accessToken = "access_token"
+        case tokenType = "token_type"
+        case scope
+        case expiresIn = "expires_in"
+        case refreshToken = "refresh_token"
+    }
 }
 
 public protocol SpotifyTokenRefreshing: Sendable {
@@ -38,6 +46,8 @@ public final class SpotifyPKCEAuthenticator: SpotifyTokenRefreshing, Sendable {
         self.pkceGenerator = pkceGenerator
         self.urlSession = URLSession(configuration: urlSessionConfiguration)
     }
+
+    public var configurationSnapshot: SpotifyAPIConfiguration { configuration }
 
     public func makeAuthorizationSession() throws -> SpotifyAuthorizationSession {
         let pkce = pkceGenerator.makeChallenge()

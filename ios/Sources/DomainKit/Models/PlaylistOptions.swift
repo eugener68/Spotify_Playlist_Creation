@@ -13,6 +13,7 @@ public struct PlaylistOptions: Codable, Equatable, Sendable {
     public var truncate: Bool
     public var verbose: Bool
     public var dryRun: Bool
+    public var preferOriginalTracks: Bool
     public var manualArtistQueries: [String]
     public var artistsFileBookmark: Data?
     public var includeLibraryArtists: Bool
@@ -31,6 +32,7 @@ public struct PlaylistOptions: Codable, Equatable, Sendable {
         truncate: Bool = false,
         verbose: Bool = false,
         dryRun: Bool = false,
+        preferOriginalTracks: Bool = true,
         manualArtistQueries: [String] = [],
         artistsFileBookmark: Data? = nil,
         includeLibraryArtists: Bool = true,
@@ -48,6 +50,7 @@ public struct PlaylistOptions: Codable, Equatable, Sendable {
         self.truncate = truncate
         self.verbose = verbose
         self.dryRun = dryRun
+        self.preferOriginalTracks = preferOriginalTracks
         self.manualArtistQueries = manualArtistQueries
         self.artistsFileBookmark = artistsFileBookmark
         self.includeLibraryArtists = includeLibraryArtists

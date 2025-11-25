@@ -11,6 +11,7 @@ final class PlaylistOptionsTests: XCTestCase {
         XCTAssertEqual(options.maxTracks, 100)
         XCTAssertTrue(options.dedupeVariants)
         XCTAssertTrue(options.reuseExisting)
+        XCTAssertTrue(options.preferOriginalTracks)
         XCTAssertTrue(options.includeLibraryArtists)
         XCTAssertFalse(options.includeFollowedArtists)
     }
