@@ -11,6 +11,9 @@ import UIKit
 import AppKit
 #endif
 #endif
+#if canImport(UniformTypeIdentifiers)
+import UniformTypeIdentifiers
+#endif
 #endif
 
 public struct AppDependencies {
@@ -171,6 +174,8 @@ public struct RootView: View {
     @State private var preferOriginalTracks: Bool = true
     @State private var dateStamp: Bool = true
     @State private var dryRun: Bool = true
+    @State private var isImportingArtists = false
+    @State private var artistInputFeedback: String?
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
@@ -200,6 +205,22 @@ public struct RootView: View {
                     Text("Demo data ships with Metallica and A-ha")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    HStack {
+                        Button(action: { isImportingArtists = true }) {
+                            Label("Import CSV", systemImage: "tray.and.arrow.down")
+                        }
+                        .buttonStyle(.bordered)
+                        Button(action: pasteArtistsFromClipboard) {
+                            Label("Paste", systemImage: "doc.on.clipboard")
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(pasteboardString == nil)
+                    }
+                    if let artistInputFeedback {
+                        Text(artistInputFeedback)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Options") {
@@ -272,18 +293,103 @@ public struct RootView: View {
         .task {
             await authViewModel.ensureStatusLoaded()
         }
+        .fileImporter(
+            isPresented: $isImportingArtists,
+            allowedContentTypes: artistImportContentTypes,
+            allowsMultipleSelection: false,
+            onCompletion: handleArtistImport(result:)
+        )
     #if os(iOS)
         .navigationViewStyle(.stack)
     #endif
     }
 
     private func parsedManualQueries() -> [String] {
-        manualArtists
-            .split(whereSeparator: { character in
-                character == "," || character == "\n"
-            })
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
+        Self.parseArtistList(manualArtists)
+    }
+
+    private func pasteArtistsFromClipboard() {
+        guard let clipboardString = pasteboardString else {
+            artistInputFeedback = "Clipboard is empty."
+            return
+        }
+        let added = appendArtists(from: clipboardString)
+        artistInputFeedback = added > 0 ? "Added \(added) new artist\(added == 1 ? "" : "s") from clipboard." : "No new artists detected in clipboard."
+    }
+
+    private func handleArtistImport(result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            do {
+                let data = try Data(contentsOf: url)
+                guard let contents = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .unicode) else {
+                    artistInputFeedback = "Could not read \(url.lastPathComponent)."
+                    return
+                }
+                let added = appendArtists(from: contents)
+                artistInputFeedback = added > 0 ? "Added \(added) new artist\(added == 1 ? "" : "s") from \(url.lastPathComponent)." : "No new artists found in \(url.lastPathComponent)."
+            } catch {
+                artistInputFeedback = "Import failed: \(error.localizedDescription)"
+            }
+        case .failure(let error):
+            artistInputFeedback = "Import failed: \(error.localizedDescription)"
+        }
+    }
+
+    @discardableResult
+    private func appendArtists(from text: String) -> Int {
+        let existing = Self.parseArtistList(manualArtists)
+        var merged = existing
+        var seen = Set(existing.map { $0.lowercased() })
+        var addedCount = 0
+        for artist in Self.parseArtistList(text) {
+            let key = artist.lowercased()
+            if seen.insert(key).inserted {
+                merged.append(artist)
+                addedCount += 1
+            }
+        }
+        guard addedCount > 0 else { return 0 }
+        manualArtists = merged.joined(separator: "\n")
+        return addedCount
+    }
+
+    private static func parseArtistList(_ text: String) -> [String] {
+        let sanitized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let separators = CharacterSet(charactersIn: ",;\n")
+        let rawComponents = sanitized.components(separatedBy: separators)
+        var seen = Set<String>()
+        var results: [String] = []
+        for component in rawComponents {
+            var trimmed = component.trimmingCharacters(in: .whitespacesAndNewlines)
+            trimmed = trimmed.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+            guard !trimmed.isEmpty else { continue }
+            let key = trimmed.lowercased()
+            if seen.insert(key).inserted {
+                results.append(trimmed)
+            }
+        }
+        return results
+    }
+
+    private var pasteboardString: String? {
+    #if canImport(UIKit)
+        UIPasteboard.general.string
+    #elseif os(macOS)
+        NSPasteboard.general.string(forType: .string)
+    #else
+        nil
+    #endif
+    }
+
+    private var artistImportContentTypes: [UTType] {
+        if #available(iOS 16.0, macOS 13.0, *) {
+            return [.commaSeparatedText, .plainText, .utf8PlainText]
+        }
+        return [.commaSeparatedText, .plainText]
     }
 
     private func runBuild() {
