@@ -166,6 +166,7 @@ Icon?
 .build/
 .swiftpm/
 DerivedData/
+AssetsBuild/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
