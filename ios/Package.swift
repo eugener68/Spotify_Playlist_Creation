@@ -36,7 +36,10 @@ let package = Package(
         ),
         .target(
             name: "AppFeature",
-            dependencies: ["DomainKit", "SpotifyAPIKit"]
+            dependencies: ["DomainKit", "SpotifyAPIKit"],
+            resources: [
+                .process("Resources")
+            ]
         ),
         .testTarget(
             name: "DomainKitTests",

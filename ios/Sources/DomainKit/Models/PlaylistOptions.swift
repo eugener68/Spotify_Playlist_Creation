@@ -25,7 +25,7 @@ public struct PlaylistOptions: Codable, Equatable, Sendable {
         limitPerArtist: Int = 5,
         maxArtists: Int = 25,
         maxTracks: Int = 100,
-        shuffle: Bool = false,
+        shuffle: Bool = true,
         shuffleSeed: Int? = nil,
         dedupeVariants: Bool = true,
         reuseExisting: Bool = true,

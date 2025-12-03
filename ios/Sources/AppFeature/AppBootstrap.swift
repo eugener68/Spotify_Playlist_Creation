@@ -141,6 +141,33 @@ public struct AppDependencies {
 
 #if canImport(SwiftUI)
 public struct RootView: View {
+    enum FlowStep: Int, CaseIterable, Identifiable {
+        case authentication
+        case options
+        case creation
+        case results
+
+        var id: Int { rawValue }
+
+        var title: String {
+            switch self {
+            case .authentication: return "Sign In"
+            case .options: return "Settings"
+            case .creation: return "Build"
+            case .results: return "Results"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .authentication: return "person.crop.circle.fill"
+            case .options: return "slider.horizontal.3"
+            case .creation: return "music.note.list"
+            case .results: return "sparkles"
+            }
+        }
+    }
+
     public init(dependencies: AppDependencies) {
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
@@ -170,128 +197,57 @@ public struct RootView: View {
     @State private var manualArtists: String = "Metallica, A-ha"
     @State private var limitPerArtist: Int = 3
     @State private var maxTracks: Int = 10
-    @State private var shuffle: Bool = false
+    @State private var shuffle: Bool = true
     @State private var preferOriginalTracks: Bool = true
+    @Environment(\.openURL) private var openURLAction
     @State private var dateStamp: Bool = true
     @State private var dryRun: Bool = true
     @State private var isImportingArtists = false
+    @State private var activeStep: FlowStep = .authentication
     @State private var artistInputFeedback: String?
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
     #endif
+    @Environment(\.colorScheme) private var colorScheme
 
     public var body: some View {
-        NavigationView {
-            Form {
-                if authViewModel.requiresAuthentication {
-                    Section("Spotify Account") {
-                        authenticationSection()
-                    }
-                }
+        ZStack {
+            AppSurfaceBackground()
+            VStack(spacing: 20) {
+                FlowStepSelector(
+                    activeStep: $activeStep,
+                    isAuthenticated: authViewModel.isAuthenticated,
+                    requiresAuthentication: authViewModel.requiresAuthentication,
+                    hasResults: viewModel.lastResult != nil
+                )
+                .padding(Edge.Set.top, 8)
 
-                Section("Playlist Name \n(replace default name with desired one)") {
-                    TextField("Playlist name", text: $playlistName)
-                    Toggle("Date stamp name", isOn: $dateStamp)
-                    Toggle("Dry run", isOn: $dryRun)
-                }
+                screenContent()
 
-                Section("Manual artists") {
-                    TextEditor(text: $manualArtists)
-                        .frame(minHeight: 80)
-                    Text("Separate artists with commas or new lines.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text("Demo data ships with Metallica and A-ha")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    HStack {
-                        Button(action: { isImportingArtists = true }) {
-                            Label("Import CSV", systemImage: "tray.and.arrow.down")
-                        }
-                        .buttonStyle(.bordered)
-                        Button(action: pasteArtistsFromClipboard) {
-                            Label("Paste", systemImage: "doc.on.clipboard")
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(pasteboardString == nil)
-                    }
-                    if let artistInputFeedback {
-                        Text(artistInputFeedback)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Options") {
-                    Stepper(value: $limitPerArtist, in: 1 ... 10) {
-                        Label("Limit per artist: \(limitPerArtist)", systemImage: "music.note.list")
-                    }
-                    Stepper(value: $maxTracks, in: 1 ... 100) {
-                        Label("Max tracks: \(maxTracks)", systemImage: "number.square")
-                    }
-                    Toggle("Shuffle results", isOn: $shuffle)
-                    Toggle("Prefer original versions", isOn: $preferOriginalTracks)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section {
-                    Button(action: runBuild) {
-                        Label(viewModel.isRunning ? "Building…" : "Run Playlist Build", systemImage: "play.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .disabled(viewModel.isRunning || parsedManualQueries().isEmpty || isAuthenticationRequiredButUnavailable)
-
-                    if viewModel.isRunning {
-                        ProgressView()
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundColor(.red)
-                    }
-                }
-
-                if let result = viewModel.lastResult {
-                    Section("Latest Result") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(result.playlistName)
-                                .font(.headline)
-                            Text("Prepared: \(result.preparedTrackURIs.count) – Uploaded: \(result.stats.totalUploaded)")
-                                .font(.subheadline)
-                            Text("Reused existing playlist: \(result.reusedExisting ? "Yes" : "No")")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Section("Upload Order (\(result.finalUploadURIs.count))") {
-                        if result.displayTracks.isEmpty {
-                            ForEach(Array(result.finalUploadURIs.enumerated()), id: \.offset) { index, uri in
-                                UploadRowView(
-                                    index: index,
-                                    primaryText: uri,
-                                    secondaryText: uri
-                                )
-                            }
-                        } else {
-                            ForEach(Array(result.displayTracks.enumerated()), id: \.offset) { index, description in
-                                UploadRowView(
-                                    index: index,
-                                    primaryText: description,
-                                    secondaryText: index < result.finalUploadURIs.count ? result.finalUploadURIs[index] : nil
-                                )
-                            }
-                        }
-                    }
+                if activeStep == .creation {
+                    buildActionPanel()
                 }
             }
-            .navigationTitle("Spotify Playlist Builder")
+            .padding()
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .onChange(of: authViewModel.isAuthenticated) { _ in
+            updateActiveStepForAuth()
+        }
+        .onChange(of: authViewModel.requiresAuthentication) { _ in
+            updateActiveStepForAuth()
+        }
+        .onChange(of: viewModel.lastResult) { result in
+            if result != nil {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    activeStep = .results
+                }
+            }
         }
         .task {
             await authViewModel.ensureStatusLoaded()
+            updateActiveStepForAuth()
         }
         .fileImporter(
             isPresented: $isImportingArtists,
@@ -299,13 +255,254 @@ public struct RootView: View {
             allowsMultipleSelection: false,
             onCompletion: handleArtistImport(result:)
         )
-    #if os(iOS)
-        .navigationViewStyle(.stack)
-    #endif
+    }
+
+    @ViewBuilder
+    private func screenContent() -> some View {
+        switch activeStep {
+        case .authentication:
+            authenticationCard
+        case .options:
+            optionsScreen
+        case .creation:
+            createPlaylistCards
+        case .results:
+            resultsCard
+        }
+    }
+
+    private var authenticationCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Spotify Account")
+                .font(.title2.bold())
+            authenticationSection()
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 12, y: 6)
+    }
+
+    private var createPlaylistCards: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                playlistCard
+                artistsCard
+            }
+            .padding(.bottom)
+        }
+    }
+
+    private var optionsScreen: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                optionsCard
+            }
+            .padding(.bottom)
+        }
+    }
+
+    private var resultsCard: some View {
+        Group {
+            if let result = viewModel.lastResult {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Latest Build")
+                        .font(.title3.bold())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(result.playlistName)
+                            .font(.headline)
+                        Text("Prepared: \(result.preparedTrackURIs.count) • Uploaded: \(result.stats.totalUploaded)")
+                            .font(.subheadline)
+                        Text(result.reusedExisting ? "Updated existing playlist" : "Created new playlist")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    Text("Upload Order")
+                        .font(.headline)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(displayRows(for: result)) { row in
+                                UploadRowView(index: row.index, primaryText: row.primary, secondaryText: row.secondary)
+                            }
+                        }
+                        .padding(.vertical)
+                    }
+                }
+            } else {
+                emptyResultsPlaceholder
+            }
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 12, y: 6)
+    }
+
+    @ViewBuilder
+    private var emptyResultsPlaceholder: some View {
+        if #available(iOS 17.0, macOS 14.0, *) {
+            ContentUnavailableView("No Builds Yet", systemImage: "sparkles", description: Text("Run the builder to preview your playlist."))
+        } else {
+            VStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
+                Text("No Builds Yet")
+                    .font(.headline)
+                Text("Run the builder to preview your playlist.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 32)
+        }
+    }
+
+    private func buildActionPanel() -> some View {
+        VStack(spacing: 12) {
+            Button(action: runBuild) {
+                Label(viewModel.isRunning ? "Building…" : "Run Playlist Build", systemImage: "play.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(AccentButtonStyle())
+            .disabled(viewModel.isRunning || parsedManualQueries().isEmpty || isAuthenticationRequiredButUnavailable)
+
+            if viewModel.isRunning {
+                ProgressView()
+                    .progressViewStyle(.circular)
+            }
+
+            if let error = viewModel.errorMessage {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundColor(.red)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 12, y: 6)
+    }
+
+    private var playlistCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Playlist Name:")
+                .font(.title3.bold())
+            TextField("Playlist name", text: $playlistName)
+                .filledTextFieldStyle()
+            OptionToggleRow(title: "Date stamp name", subtitle: nil, isOn: $dateStamp)
+            OptionToggleRow(title: "Dry run", subtitle: nil, isOn: $dryRun)
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 10, y: 4)
+    }
+
+    private var artistsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Manual Artist List")
+                .font(.title3.bold())
+            TextEditor(text: $manualArtists)
+                .frame(minHeight: 110)
+                .padding(10)
+                .background(editorBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Text("Separate artists with commas or new lines. Demo data ships with Metallica and A-ha")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            HStack {
+                Button(action: { isImportingArtists = true }) {
+                    Label("Import Artist List CSV/Text", systemImage: "tray.and.arrow.down")
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                Button(action: pasteArtistsFromClipboard) {
+                    Label("Paste Artist List", systemImage: "doc.on.clipboard")
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .disabled(pasteboardString == nil)
+            }
+            if let artistInputFeedback {
+                Text(artistInputFeedback)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 10, y: 4)
+    }
+
+    private var optionsCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Settings")
+                .font(.title3.bold())
+            OptionStepperRow(
+                title: "Limit Per Artist",
+                subtitle: "Number of top tracks to fetch per artist. Max is 10.",
+                value: $limitPerArtist,
+                bounds: 1...10
+            )
+            OptionStepperRow(
+                title: "Max Tracks",
+                subtitle: "Cap the total tracks before upload. Max is 100.",
+                value: $maxTracks,
+                bounds: 1...100
+            )
+            OptionToggleRow(
+                title: "Shuffle Results",
+                subtitle: "Randomize order using a deterministic seed.",
+                isOn: $shuffle
+            )
+            OptionToggleRow(
+                title: "Prefer Original Versions",
+                subtitle: "Favor non-remastered mixes when available.",
+                isOn: $preferOriginalTracks
+            )
+        }
+        .padding()
+        .background(cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: shadowColor, radius: 10, y: 4)
+    }
+
+    private func displayRows(for result: PlaylistResult) -> [DisplayRow] {
+        if result.displayTracks.isEmpty {
+            return result.finalUploadURIs.enumerated().map { DisplayRow(index: $0.offset, primary: $0.element, secondary: $0.element) }
+        }
+        return result.displayTracks.enumerated().map { index, text in
+            let secondary = index < result.finalUploadURIs.count ? result.finalUploadURIs[index] : nil
+            return DisplayRow(index: index, primary: text, secondary: secondary)
+        }
+    }
+
+    private func buildCardBackgroundColor() -> Color {
+        colorScheme == .dark ? Color(red: 0.14, green: 0.14, blue: 0.18) : Color.white.opacity(0.96)
+    }
+
+    private var cardBackground: Color { buildCardBackgroundColor() }
+
+    private var editorBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.04)
+    }
+
+    private var shadowColor: Color {
+        colorScheme == .dark ? Color.black.opacity(0.5) : Color.black.opacity(0.08)
+    }
+
+    private func updateActiveStepForAuth() {
+        if authViewModel.requiresAuthentication && !authViewModel.isAuthenticated {
+            activeStep = .authentication
+        } else if activeStep == .authentication {
+            activeStep = .options
+        }
     }
 
     private func parsedManualQueries() -> [String] {
-        Self.parseArtistList(manualArtists)
+        parseArtistList(manualArtists)
     }
 
     private func pasteArtistsFromClipboard() {
@@ -321,6 +518,13 @@ public struct RootView: View {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
+        #if os(iOS)
+            guard url.startAccessingSecurityScopedResource() else {
+                artistInputFeedback = "Import failed: permission was denied for \(url.lastPathComponent)."
+                return
+            }
+            defer { url.stopAccessingSecurityScopedResource() }
+        #endif
             do {
                 let data = try Data(contentsOf: url)
                 guard let contents = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .unicode) else {
@@ -339,11 +543,11 @@ public struct RootView: View {
 
     @discardableResult
     private func appendArtists(from text: String) -> Int {
-        let existing = Self.parseArtistList(manualArtists)
+        let existing = parseArtistList(manualArtists)
         var merged = existing
         var seen = Set(existing.map { $0.lowercased() })
         var addedCount = 0
-        for artist in Self.parseArtistList(text) {
+        for artist in parseArtistList(text) {
             let key = artist.lowercased()
             if seen.insert(key).inserted {
                 merged.append(artist)
@@ -355,7 +559,7 @@ public struct RootView: View {
         return addedCount
     }
 
-    private static func parseArtistList(_ text: String) -> [String] {
+    private func parseArtistList(_ text: String) -> [String] {
         let sanitized = text
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\r", with: "\n")
@@ -441,6 +645,11 @@ public struct RootView: View {
         case .signedIn:
             Label("Signed in", systemImage: "checkmark.circle.fill")
                 .foregroundColor(.green)
+            Button(action: openSpotifyDashboard) {
+                Label("Open Spotify Dashboard", systemImage: "safari")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SecondaryButtonStyle())
             Button("Sign out", action: signOut)
                 .frame(maxWidth: .infinity)
         case .signedOut:
@@ -512,6 +721,11 @@ public struct RootView: View {
     private func signOut() {
         Task { await authViewModel.signOut() }
     }
+
+    private func openSpotifyDashboard() {
+        guard let url = URL(string: "https://www.spotify.com/account/overview") else { return }
+        openURLAction(url)
+    }
 }
 #if DEBUG
 struct RootView_Previews: PreviewProvider {
@@ -520,6 +734,76 @@ struct RootView_Previews: PreviewProvider {
     }
 }
 #endif
+
+private struct OptionStepperRow: View {
+    let title: String
+    let subtitle: String?
+    @Binding var value: Int
+    let bounds: ClosedRange<Int>
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Text("\(value)")
+                        .font(.headline.monospacedDigit())
+                        .frame(minWidth: 32, alignment: .trailing)
+                    Stepper("", value: $value, in: bounds)
+                        .labelsHidden()
+                }
+            }
+        }
+        .padding(12)
+        .background(optionRowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var optionRowBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+    }
+}
+
+private struct OptionToggleRow: View {
+    let title: String
+    let subtitle: String?
+    @Binding var isOn: Bool
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+        .padding(12)
+        .background(optionRowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var optionRowBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+    }
+}
 
 private struct UploadRowView: View {
     let index: Int
@@ -546,6 +830,162 @@ private struct UploadRowView: View {
                 showSecondary.toggle()
             }
         }
+    }
+}
+
+private struct DisplayRow: Identifiable {
+    let index: Int
+    let primary: String
+    let secondary: String?
+    var id: Int { index }
+}
+
+private struct FlowStepSelector: View {
+    @Binding var activeStep: RootView.FlowStep
+    let isAuthenticated: Bool
+    let requiresAuthentication: Bool
+    let hasResults: Bool
+
+    private var steps: [RootView.FlowStep] {
+        RootView.FlowStep.allCases.filter { step in
+            !(step == .authentication && !requiresAuthentication)
+        }
+    }
+
+    private var gridColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 86, maximum: 130), spacing: 12)]
+    }
+
+    private func isEnabled(_ step: RootView.FlowStep) -> Bool {
+        switch step {
+        case .authentication:
+            return true
+        case .options, .creation:
+            return !requiresAuthentication || isAuthenticated
+        case .results:
+            return hasResults
+        }
+    }
+
+    var body: some View {
+        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
+            ForEach(steps) { step in
+                Button(action: { activeStep = step }) {
+                    VStack(spacing: 8) {
+                        Image(systemName: step.systemImage)
+                        Text(step.title)
+                            .font(.footnote)
+                            .fontWeight(activeStep == step ? .bold : .regular)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 86, alignment: .top)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 12)
+                    .background(activeStep == step ? Color.accentColor.opacity(0.25) : Color.accentColor.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(activeStep == step ? Color.accentColor : Color.clear, lineWidth: 1)
+                    )
+                    .opacity(isEnabled(step) ? 1 : 0.4)
+                }
+                .disabled(!isEnabled(step))
+            }
+        }
+    }
+}
+
+private struct AccentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.accentColor)
+                    .opacity(configuration.isPressed ? 0.8 : 1)
+            )
+            .foregroundColor(.white)
+            .animation(.easeInOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
+private struct SecondaryButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.medium))
+            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill((colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)))
+            )
+            .foregroundColor(.primary)
+            .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+private struct FilledTextFieldModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(fieldFillColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 6, y: 3)
+    }
+
+    private var fieldFillColor: Color {
+        if colorScheme == .dark {
+            return Color.white.opacity(0.08)
+        }
+        return .white
+    }
+
+    private var borderColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.25) : Color.black.opacity(0.12)
+    }
+}
+
+private extension View {
+    func filledTextFieldStyle() -> some View {
+        modifier(FilledTextFieldModifier())
+    }
+}
+
+private struct AppSurfaceBackground: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        Group {
+            if scheme == .dark {
+                LinearGradient(
+                    colors: [Color(red: 0.02, green: 0.14, blue: 0.08), Color(red: 0.01, green: 0.05, blue: 0.03)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            } else {
+                LinearGradient(
+                    colors: [Color(red: 0.88, green: 0.97, blue: 0.90), Color(red: 0.94, green: 0.99, blue: 0.95)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
+        }
+        .ignoresSafeArea()
     }
 }
 #endif

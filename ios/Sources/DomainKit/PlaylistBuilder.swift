@@ -45,7 +45,7 @@ public struct PlaylistBuilderDependencies: Sendable {
     }
 }
 
-public struct PlaylistResult: Sendable {
+public struct PlaylistResult: Equatable, Sendable {
     public let playlistID: String?
     public let playlistName: String
     public let preparedTrackURIs: [String]

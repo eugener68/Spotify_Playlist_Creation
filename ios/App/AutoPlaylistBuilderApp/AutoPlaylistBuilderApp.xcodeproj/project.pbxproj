@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		4443DC7C2ED5170100ADADF8 /* AppSecrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4443DC7B2ED5170100ADADF8 /* AppSecrets.plist */; };
+		4443DC7F2EDFCDE000ADADF8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4443DC7E2EDFCDE000ADADF8 /* LaunchScreen.storyboard */; };
 		58C4C4C12C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C4C4B92C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift */; };
 		58C4C4C22C1B51A400E37A9E /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C4C4BA2C1B51A400E37A9E /* AppConfiguration.swift */; };
 		58C4C4C32C1B51A400E37A9E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */; };
@@ -17,10 +18,12 @@
 
 /* Begin PBXFileReference section */
 		4443DC7B2ED5170100ADADF8 /* AppSecrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppSecrets.plist; sourceTree = "<group>"; };
+		4443DC7D2EDFCDE000ADADF8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		4443DC812EDFCE2700ADADF8 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 		58C4C4B32C1B51A400E37A9E /* AutoPlaylistBuilderApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AutoPlaylistBuilderApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		58C4C4B92C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoPlaylistBuilderApp.swift; sourceTree = "<group>"; };
 		58C4C4BA2C1B51A400E37A9E /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
-		58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = /Users/eugene/Spotify_Playlist_Creation/ios/App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp/Resources/Assets.xcassets; sourceTree = "<absolute>"; };
 		58C4C4BC2C1B51A400E37A9E /* AppSecrets.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppSecrets.example.plist; sourceTree = "<group>"; };
 		58C4C4BD2C1B51A400E37A9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -84,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				4443DC7B2ED5170100ADADF8 /* AppSecrets.plist */,
+				4443DC7E2EDFCDE000ADADF8 /* LaunchScreen.storyboard */,
 				58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */,
 				58C4C4BC2C1B51A400E37A9E /* AppSecrets.example.plist */,
 				58C4C4BD2C1B51A400E37A9E /* Info.plist */,
@@ -162,6 +166,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4443DC7F2EDFCDE000ADADF8 /* LaunchScreen.storyboard in Resources */,
 				58C4C4C42C1B51A400E37A9E /* AppSecrets.example.plist in Resources */,
 				4443DC7C2ED5170100ADADF8 /* AppSecrets.plist in Resources */,
 				58C4C4C32C1B51A400E37A9E /* Assets.xcassets in Resources */,
@@ -181,6 +186,18 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		4443DC7E2EDFCDE000ADADF8 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				4443DC7D2EDFCDE000ADADF8 /* Base */,
+				4443DC812EDFCE2700ADADF8 /* en */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		58C4C4C82C1B51A400E37A9E /* Debug */ = {
@@ -236,6 +253,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -296,6 +314,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
