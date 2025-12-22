@@ -151,10 +151,10 @@ public struct RootView: View {
 
         var title: String {
             switch self {
-            case .authentication: return "Sign In"
-            case .options: return "Settings"
-            case .creation: return "Build"
-            case .results: return "Results"
+            case .authentication: return L10n.Flow.signIn
+            case .options: return L10n.Flow.settings
+            case .creation: return L10n.Flow.build
+            case .results: return L10n.Flow.results
             }
         }
 
@@ -193,7 +193,7 @@ public struct RootView: View {
 
     @StateObject private var viewModel: PlaylistBuilderViewModel
     @StateObject private var authViewModel: AuthenticationViewModel
-    @State private var playlistName: String = "My Playlist"
+    @State private var playlistName: String = L10n.Builder.defaultPlaylistName
     @State private var manualArtists: String = "Metallica, A-ha"
     @State private var limitPerArtist: Int = 3
     @State private var maxTracks: Int = 10
@@ -273,7 +273,7 @@ public struct RootView: View {
 
     private var authenticationCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Spotify Account")
+            Text(L10n.Builder.spotifyAccountTitle)
                 .font(.title2.bold())
             authenticationSection()
         }
@@ -306,19 +306,19 @@ public struct RootView: View {
         Group {
             if let result = viewModel.lastResult {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Latest Build")
+                    Text(L10n.Builder.latestBuildTitle)
                         .font(.title3.bold())
                     VStack(alignment: .leading, spacing: 4) {
                         Text(result.playlistName)
                             .font(.headline)
-                        Text("Prepared: \(result.preparedTrackURIs.count) • Uploaded: \(result.stats.totalUploaded)")
+                        Text(L10n.Results.preparedAndUploaded(prepared: result.preparedTrackURIs.count, uploaded: result.stats.totalUploaded))
                             .font(.subheadline)
-                        Text(result.reusedExisting ? "Updated existing playlist" : "Created new playlist")
+                        Text(result.reusedExisting ? L10n.Results.updatedExisting : L10n.Results.createdNew)
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                     Divider()
-                    Text("Upload Order")
+                    Text(L10n.Builder.uploadOrderTitle)
                         .font(.headline)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 10) {
@@ -342,15 +342,15 @@ public struct RootView: View {
     @ViewBuilder
     private var emptyResultsPlaceholder: some View {
         if #available(iOS 17.0, macOS 14.0, *) {
-            ContentUnavailableView("No Builds Yet", systemImage: "sparkles", description: Text("Run the builder to preview your playlist."))
+            ContentUnavailableView(LocalizedStringKey(L10n.Builder.emptyResultsTitle), systemImage: "sparkles", description: Text(L10n.Builder.emptyResultsDescription))
         } else {
             VStack(spacing: 12) {
                 Image(systemName: "sparkles")
                     .font(.largeTitle)
                     .foregroundStyle(.secondary)
-                Text("No Builds Yet")
+                Text(L10n.Builder.emptyResultsTitle)
                     .font(.headline)
-                Text("Run the builder to preview your playlist.")
+                Text(L10n.Builder.emptyResultsDescription)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -362,8 +362,12 @@ public struct RootView: View {
     private func buildActionPanel() -> some View {
         VStack(spacing: 12) {
             Button(action: runBuild) {
-                Label(viewModel.isRunning ? "Building…" : "Run Playlist Build", systemImage: "play.fill")
-                    .frame(maxWidth: .infinity)
+                Label {
+                    Text(viewModel.isRunning ? L10n.Builder.buildingButton : L10n.Builder.runButton)
+                } icon: {
+                    Image(systemName: "play.fill")
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(AccentButtonStyle())
             .disabled(viewModel.isRunning || parsedManualQueries().isEmpty || isAuthenticationRequiredButUnavailable)
@@ -388,12 +392,12 @@ public struct RootView: View {
 
     private var playlistCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Playlist Name:")
+            Text(L10n.Builder.playlistNameLabel)
                 .font(.title3.bold())
-            TextField("Playlist name", text: $playlistName)
+            TextField(L10n.Builder.playlistNamePlaceholder, text: $playlistName)
                 .filledTextFieldStyle()
-            OptionToggleRow(title: "Date stamp name", subtitle: nil, isOn: $dateStamp)
-            OptionToggleRow(title: "Dry run", subtitle: nil, isOn: $dryRun)
+            OptionToggleRow(title: L10n.Builder.dateStampToggle, subtitle: nil, isOn: $dateStamp)
+            OptionToggleRow(title: L10n.Builder.dryRunToggle, subtitle: nil, isOn: $dryRun)
         }
         .padding()
         .background(cardBackground)
@@ -403,23 +407,31 @@ public struct RootView: View {
 
     private var artistsCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Manual Artist List")
+            Text(L10n.Builder.manualArtistListTitle)
                 .font(.title3.bold())
             TextEditor(text: $manualArtists)
                 .frame(minHeight: 110)
                 .padding(10)
                 .background(editorBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            Text("Separate artists with commas or new lines. Demo data ships with Metallica and A-ha")
+            Text(L10n.Builder.manualArtistHint)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             HStack {
                 Button(action: { isImportingArtists = true }) {
-                    Label("Import Artist List CSV/Text", systemImage: "tray.and.arrow.down")
+                    Label {
+                        Text(L10n.Builder.importArtistList)
+                    } icon: {
+                        Image(systemName: "tray.and.arrow.down")
+                    }
                 }
                 .buttonStyle(SecondaryButtonStyle())
                 Button(action: pasteArtistsFromClipboard) {
-                    Label("Paste Artist List", systemImage: "doc.on.clipboard")
+                    Label {
+                        Text(L10n.Builder.pasteArtistList)
+                    } icon: {
+                        Image(systemName: "doc.on.clipboard")
+                    }
                 }
                 .buttonStyle(SecondaryButtonStyle())
                 .disabled(pasteboardString == nil)
@@ -438,28 +450,28 @@ public struct RootView: View {
 
     private var optionsCard: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Settings")
+            Text(L10n.Builder.settingsTitle)
                 .font(.title3.bold())
             OptionStepperRow(
-                title: "Limit Per Artist",
-                subtitle: "Number of top tracks to fetch per artist. Max is 10.",
+                title: L10n.Builder.limitPerArtistTitle,
+                subtitle: L10n.Builder.limitPerArtistSubtitle,
                 value: $limitPerArtist,
                 bounds: 1...10
             )
             OptionStepperRow(
-                title: "Max Tracks",
-                subtitle: "Cap the total tracks before upload. Max is 100.",
+                title: L10n.Builder.maxTracksTitle,
+                subtitle: L10n.Builder.maxTracksSubtitle,
                 value: $maxTracks,
                 bounds: 1...100
             )
             OptionToggleRow(
-                title: "Shuffle Results",
-                subtitle: "Randomize order using a deterministic seed.",
+                title: L10n.Builder.shuffleTitle,
+                subtitle: L10n.Builder.shuffleSubtitle,
                 isOn: $shuffle
             )
             OptionToggleRow(
-                title: "Prefer Original Versions",
-                subtitle: "Favor non-remastered mixes when available.",
+                title: L10n.Builder.preferOriginalTitle,
+                subtitle: L10n.Builder.preferOriginalSubtitle,
                 isOn: $preferOriginalTracks
             )
         }
@@ -507,11 +519,11 @@ public struct RootView: View {
 
     private func pasteArtistsFromClipboard() {
         guard let clipboardString = pasteboardString else {
-            artistInputFeedback = "Clipboard is empty."
+            artistInputFeedback = L10n.ArtistInput.clipboardEmpty
             return
         }
         let added = appendArtists(from: clipboardString)
-        artistInputFeedback = added > 0 ? "Added \(added) new artist\(added == 1 ? "" : "s") from clipboard." : "No new artists detected in clipboard."
+        artistInputFeedback = added > 0 ? L10n.ArtistInput.clipboardAdded(added) : L10n.ArtistInput.clipboardNone
     }
 
     private func handleArtistImport(result: Result<[URL], Error>) {
@@ -520,7 +532,7 @@ public struct RootView: View {
             guard let url = urls.first else { return }
         #if os(iOS)
             guard url.startAccessingSecurityScopedResource() else {
-                artistInputFeedback = "Import failed: permission was denied for \(url.lastPathComponent)."
+                artistInputFeedback = L10n.ArtistInput.importPermissionDenied(url.lastPathComponent)
                 return
             }
             defer { url.stopAccessingSecurityScopedResource() }
@@ -528,16 +540,16 @@ public struct RootView: View {
             do {
                 let data = try Data(contentsOf: url)
                 guard let contents = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .unicode) else {
-                    artistInputFeedback = "Could not read \(url.lastPathComponent)."
+                    artistInputFeedback = L10n.ArtistInput.importReadFailed(url.lastPathComponent)
                     return
                 }
                 let added = appendArtists(from: contents)
-                artistInputFeedback = added > 0 ? "Added \(added) new artist\(added == 1 ? "" : "s") from \(url.lastPathComponent)." : "No new artists found in \(url.lastPathComponent)."
+                artistInputFeedback = added > 0 ? L10n.ArtistInput.importAddedFromFile(added, fileName: url.lastPathComponent) : L10n.ArtistInput.importNoneInFile(url.lastPathComponent)
             } catch {
-                artistInputFeedback = "Import failed: \(error.localizedDescription)"
+                artistInputFeedback = L10n.ArtistInput.importFailed(error.localizedDescription)
             }
         case .failure(let error):
-            artistInputFeedback = "Import failed: \(error.localizedDescription)"
+            artistInputFeedback = L10n.ArtistInput.importFailed(error.localizedDescription)
         }
     }
 
@@ -631,34 +643,50 @@ public struct RootView: View {
         case .unknown:
             HStack {
                 ProgressView()
-                Text("Checking existing session…")
+                Text(L10n.Auth.statusChecking)
                     .font(.footnote)
             }
         case .signingIn:
             HStack {
                 ProgressView()
-                Text("Waiting for Spotify sign-in…")
+                Text(L10n.Auth.statusSigningIn)
                     .font(.footnote)
             }
-            Button("Cancel", action: cancelAuthenticationFlow)
+            Button(action: cancelAuthenticationFlow) {
+                Text(L10n.Auth.cancel)
+            }
                 .frame(maxWidth: .infinity)
         case .signedIn:
-            Label("Signed in", systemImage: "checkmark.circle.fill")
+            Label {
+                Text(L10n.Auth.signedIn)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+            }
                 .foregroundColor(.green)
             Button(action: openSpotifyDashboard) {
-                Label("Open Spotify App/Dashboard", systemImage: "safari")
+                Label {
+                    Text(L10n.Auth.openDashboard)
+                } icon: {
+                    Image(systemName: "safari")
+                }
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(SecondaryButtonStyle())
-            Button("Sign out", action: signOut)
+            Button(action: signOut) {
+                Text(L10n.Auth.signOut)
+            }
                 .frame(maxWidth: .infinity)
         case .signedOut:
             Button(action: startAuthenticationFlow) {
-                Label("Sign in with Spotify", systemImage: "person.crop.circle.badge.plus")
+                Label {
+                    Text(L10n.Auth.signIn)
+                } icon: {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                }
                     .frame(maxWidth: .infinity)
             }
         case .unavailable:
-            Text("Authentication unavailable in this build.")
+            Text(L10n.Auth.unavailable)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

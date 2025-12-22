@@ -1,0 +1,55 @@
+/* Flow steps */
+"flow.sign_in" = "Sign In";
+"flow.settings" = "Settings";
+"flow.build" = "Build";
+"flow.results" = "Results";
+
+/* Builder copy */
+"builder.default_playlist_name" = "My Playlist";
+"builder.spotify_account_title" = "Spotify Account";
+"builder.latest_build_title" = "Latest Build";
+"builder.upload_order_title" = "Upload Order";
+"builder.empty_results_title" = "No Builds Yet";
+"builder.empty_results_description" = "Run the builder to preview your playlist.";
+"builder.building_button" = "Building…";
+"builder.run_button" = "Run Playlist Build";
+"builder.playlist_name_label" = "Playlist Name:";
+"builder.playlist_name_placeholder" = "Playlist name";
+"builder.date_stamp_toggle" = "Date stamp name";
+"builder.dry_run_toggle" = "Dry run";
+"builder.manual_artist_list_title" = "Manual Artist List";
+"builder.manual_artist_hint" = "Separate artists with commas or new lines. Demo data ships with Metallica and A-ha";
+"builder.import_csv_button" = "Import Artist List CSV/Text";
+"builder.paste_button" = "Paste Artist List";
+"builder.settings_title" = "Settings";
+"builder.limit_per_artist_title" = "Limit Per Artist";
+"builder.limit_per_artist_subtitle" = "Number of top tracks to fetch per artist. Max is 10.";
+"builder.max_tracks_title" = "Max Tracks";
+"builder.max_tracks_subtitle" = "Cap the total tracks before upload. Max is 100.";
+"builder.shuffle_title" = "Shuffle Results";
+"builder.shuffle_subtitle" = "Randomize order using a deterministic seed.";
+"builder.prefer_original_title" = "Prefer Original Versions";
+"builder.prefer_original_subtitle" = "Favor non-remastered mixes when available.";
+
+/* Results copy */
+"results.updated_existing" = "Updated existing playlist";
+"results.created_new" = "Created new playlist";
+"results.prepared_uploaded" = "Prepared: %lld • Uploaded: %lld";
+
+/* Authentication */
+"auth.status_checking" = "Checking existing session…";
+"auth.status_signing_in" = "Waiting for Spotify sign-in…";
+"auth.cancel" = "Cancel";
+"auth.signed_in" = "Signed in";
+"auth.open_dashboard" = "Open Spotify App/Dashboard";
+"auth.sign_out" = "Sign out";
+"auth.sign_in" = "Sign in with Spotify";
+"auth.unavailable" = "Authentication unavailable in this build.";
+
+/* Artist input feedback */
+"artist_input.clipboard_empty" = "Clipboard is empty.";
+"artist_input.clipboard_none" = "No new artists detected in clipboard.";
+"artist_input.import_permission_denied" = "Import failed: permission was denied for %@.";
+"artist_input.import_could_not_read" = "Could not read %@.";
+"artist_input.import_none_in_file" = "No new artists found in %@.";
+"artist_input.import_failed" = "Import failed: %@.";

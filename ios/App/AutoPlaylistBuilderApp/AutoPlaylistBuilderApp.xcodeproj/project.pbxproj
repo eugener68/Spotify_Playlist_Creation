@@ -15,6 +15,7 @@
 		58C4C4C32C1B51A400E37A9E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */; };
 		58C4C4C42C1B51A400E37A9E /* AppSecrets.example.plist in Resources */ = {isa = PBXBuildFile; fileRef = 58C4C4BC2C1B51A400E37A9E /* AppSecrets.example.plist */; };
 		58C4C4C52C1B51A400E37A9E /* AppFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 58C4C4CE2C1B51A400E37A9E /* AppFeature */; };
+		58D86C1C2F1A6E2E00A1D4B0 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 58D86C192F1A6E2E00A1D4B0 /* InfoPlist.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,9 @@
 		58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = /Users/eugene/Spotify_Playlist_Creation/ios/App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp/Resources/Assets.xcassets; sourceTree = "<absolute>"; };
 		58C4C4BC2C1B51A400E37A9E /* AppSecrets.example.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppSecrets.example.plist; sourceTree = "<group>"; };
 		58C4C4BD2C1B51A400E37A9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		58D86C1A2F1A6E2E00A1D4B0 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		58D86C1B2F1A6E2E00A1D4B0 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		58D86C1D2F1A6E2E00A1D4B0 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +98,7 @@
 				58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */,
 				58C4C4BC2C1B51A400E37A9E /* AppSecrets.example.plist */,
 				58C4C4BD2C1B51A400E37A9E /* Info.plist */,
+				58D86C192F1A6E2E00A1D4B0 /* InfoPlist.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -149,6 +154,8 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				ru,
+				ru,
 				Base,
 			);
 			mainGroup = 58C4C4A62C1B51A400E37A9E;
@@ -174,6 +181,7 @@
 				4443DC7C2ED5170100ADADF8 /* AppSecrets.plist in Resources */,
 				58C4C4C32C1B51A400E37A9E /* Assets.xcassets in Resources */,
 				44C1DD8F2EF9B19A00AF8903 /* AppIcon.icon in Resources */,
+				58D86C1C2F1A6E2E00A1D4B0 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -191,20 +199,27 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
-
 /* Begin PBXVariantGroup section */
 		4443DC7E2EDFCDE000ADADF8 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
 				4443DC7D2EDFCDE000ADADF8 /* Base */,
 				4443DC812EDFCE2700ADADF8 /* en */,
+				58D86C1D2F1A6E2E00A1D4B0 /* ru */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
 		};
+		58D86C192F1A6E2E00A1D4B0 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				58D86C1A2F1A6E2E00A1D4B0 /* Base */,
+				58D86C1B2F1A6E2E00A1D4B0 /* ru */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 /* End PBXVariantGroup section */
-
-
 
 /* Begin XCBuildConfiguration section */
 		58C4C4C82C1B51A400E37A9E /* Debug */ = {
@@ -343,14 +358,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AutoPlaylistBuilderApp/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = AutoPlaylistBuilder;
+				INFOPLIST_KEY_CFBundleDisplayName = "Spotify Playlist Builder";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -375,14 +390,14 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AutoPlaylistBuilderApp/Resources/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = AutoPlaylistBuilder;
+				INFOPLIST_KEY_CFBundleDisplayName = "Spotify Playlist Builder";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

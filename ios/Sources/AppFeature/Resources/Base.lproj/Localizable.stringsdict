@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>artist_input.clipboard_added</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@artists@</string>
+		<key>artists</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Added %d new artist from clipboard.</string>
+			<key>other</key>
+			<string>Added %d new artists from clipboard.</string>
+		</dict>
+	</dict>
+	<key>artist_input.import_added_from_file</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@artists@</string>
+		<key>artists</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Added %d new artist from %2$@.</string>
+			<key>other</key>
+			<string>Added %d new artists from %2$@.</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

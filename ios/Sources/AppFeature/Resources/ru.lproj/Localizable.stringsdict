@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>artist_input.clipboard_added</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@artists@</string>
+		<key>artists</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Добавлен %d новый артист из буфера обмена.</string>
+			<key>few</key>
+			<string>Добавлено %d новых артиста из буфера обмена.</string>
+			<key>many</key>
+			<string>Добавлено %d новых артистов из буфера обмена.</string>
+			<key>other</key>
+			<string>Добавлено %d новых артистов из буфера обмена.</string>
+		</dict>
+	</dict>
+	<key>artist_input.import_added_from_file</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@artists@</string>
+		<key>artists</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>d</string>
+			<key>one</key>
+			<string>Добавлен %d новый артист из %2$@.</string>
+			<key>few</key>
+			<string>Добавлено %d новых артиста из %2$@.</string>
+			<key>many</key>
+			<string>Добавлено %d новых артистов из %2$@.</string>
+			<key>other</key>
+			<string>Добавлено %d новых артистов из %2$@.</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
