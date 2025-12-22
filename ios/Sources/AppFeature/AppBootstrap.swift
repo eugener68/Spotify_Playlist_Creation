@@ -646,7 +646,7 @@ public struct RootView: View {
             Label("Signed in", systemImage: "checkmark.circle.fill")
                 .foregroundColor(.green)
             Button(action: openSpotifyDashboard) {
-                Label("Open Spotify Dashboard", systemImage: "safari")
+                Label("Open Spotify App/Dashboard", systemImage: "safari")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(SecondaryButtonStyle())
@@ -723,8 +723,16 @@ public struct RootView: View {
     }
 
     private func openSpotifyDashboard() {
-        guard let url = URL(string: "https://www.spotify.com/account/overview") else { return }
-        openURLAction(url)
+        guard let fallback = URL(string: "https://www.spotify.com/account/overview") else { return }
+        if let appURL = URL(string: "spotify://") {
+            openURLAction(appURL) { accepted in
+                if !accepted {
+                    openURLAction(fallback)
+                }
+            }
+            return
+        }
+        openURLAction(fallback)
     }
 }
 #if DEBUG
