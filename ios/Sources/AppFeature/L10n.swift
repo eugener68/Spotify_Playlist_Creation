@@ -36,6 +36,13 @@ enum L10n {
         static var preferOriginalSubtitle: String { localized("builder.prefer_original_subtitle", "Prefer original toggle subtitle") }
     }
 
+    enum Settings {
+        static var languageTitle: String { localized("settings.language_title", "Interface language setting title") }
+        static var languageSystem: String { localized("settings.language_system", "Option to match device language") }
+        static var languageEnglish: String { localized("settings.language_english", "Option to force English UI") }
+        static var languageRussian: String { localized("settings.language_russian", "Option to force Russian UI") }
+    }
+
     enum Results {
         static var updatedExisting: String { localized("results.updated_existing", "Label shown when playlist updated") }
         static var createdNew: String { localized("results.created_new", "Label shown when playlist created") }
@@ -102,6 +109,6 @@ enum L10n {
     }
 
     private static func localized(_ key: String, _ comment: String) -> String {
-        NSLocalizedString(key, tableName: nil, bundle: .module, value: "", comment: comment)
+        LocalizationController.shared.localizedString(forKey: key, comment: comment)
     }
 }

@@ -22,14 +22,20 @@
 "builder.import_csv_button" = "Импортировать список артистов (CSV/текст)";
 "builder.paste_button" = "Вставить список артистов";
 "builder.settings_title" = "Настройки";
-"builder.limit_per_artist_title" = "Лимит на артиста";
-"builder.limit_per_artist_subtitle" = "Сколько треков на артиста. Максимум 10.";
-"builder.max_tracks_title" = "Максимум треков на плейлист";
+"builder.limit_per_artist_title" = "Треков на артиста";
+"builder.limit_per_artist_subtitle" = "Сколько треков на каждого артиста. Максимум 10.";
+"builder.max_tracks_title" = "Всего треков в плейлисте";
 "builder.max_tracks_subtitle" = "Максимальное количество треков 100.";
 "builder.shuffle_title" = "Перемешать треки";
 "builder.shuffle_subtitle" = "Смешанный порядок исполнения треков";
 "builder.prefer_original_title" = "Предпочитать оригинальные версии";
 "builder.prefer_original_subtitle" = "Отдавайте предпочтение оригинальным (не ремастер, не ремикс) версиям, если они доступны.";
+
+/* Settings */
+"settings.language_title" = "Язык интерфейса";
+"settings.language_system" = "Системный";
+"settings.language_english" = "Английский";
+"settings.language_russian" = "Русский";
 
 /* Results copy */
 "results.updated_existing" = "Обновлён существующий плейлист";

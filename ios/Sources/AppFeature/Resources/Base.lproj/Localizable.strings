@@ -31,6 +31,12 @@
 "builder.prefer_original_title" = "Prefer Original Versions";
 "builder.prefer_original_subtitle" = "Favor non-remastered mixes when available.";
 
+/* Settings */
+"settings.language_title" = "Interface Settings";
+"settings.language_system" = "System Language";
+"settings.language_english" = "English";
+"settings.language_russian" = "Russian";
+
 /* Results copy */
 "results.updated_existing" = "Updated existing playlist";
 "results.created_new" = "Created new playlist";

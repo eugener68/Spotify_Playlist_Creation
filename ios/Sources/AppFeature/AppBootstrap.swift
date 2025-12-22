@@ -205,6 +205,7 @@ public struct RootView: View {
     @State private var isImportingArtists = false
     @State private var activeStep: FlowStep = .authentication
     @State private var artistInputFeedback: String?
+    @ObservedObject private var localization = LocalizationController.shared
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
@@ -452,6 +453,7 @@ public struct RootView: View {
         VStack(alignment: .leading, spacing: 20) {
             Text(L10n.Builder.settingsTitle)
                 .font(.title3.bold())
+            LanguageSelectorRow(selection: $localization.selection)
             OptionStepperRow(
                 title: L10n.Builder.limitPerArtistTitle,
                 subtitle: L10n.Builder.limitPerArtistSubtitle,
@@ -831,6 +833,31 @@ private struct OptionToggleRow: View {
             }
         }
         .toggleStyle(SwitchToggleStyle(tint: .accentColor))
+        .padding(12)
+        .background(optionRowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var optionRowBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+    }
+}
+
+private struct LanguageSelectorRow: View {
+    @Binding var selection: LocalizationOption
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.Settings.languageTitle)
+                .font(.subheadline.weight(.semibold))
+            Picker(L10n.Settings.languageTitle, selection: $selection) {
+                Text(L10n.Settings.languageSystem).tag(LocalizationOption.system)
+                Text(L10n.Settings.languageEnglish).tag(LocalizationOption.english)
+                Text(L10n.Settings.languageRussian).tag(LocalizationOption.russian)
+            }
+            .pickerStyle(.segmented)
+        }
         .padding(12)
         .background(optionRowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
