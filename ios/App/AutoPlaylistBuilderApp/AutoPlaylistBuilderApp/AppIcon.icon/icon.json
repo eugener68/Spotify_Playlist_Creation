@@ -21,20 +21,10 @@
       ],
       "layers" : [
         {
-          "glass-specializations" : [
-            {
-              "value" : false
-            },
-            {
-              "appearance" : "dark",
-              "value" : false
-            }
-          ],
-          "image-name" : "F36FD455-F10E-4B83-BEBE-D33127C2659C 2.png",
-          "name" : "F36FD455-F10E-4B83-BEBE-D33127C2659C 2",
-          "opacity" : 0.95,
+          "image-name" : "Photoroom_20251216_140612.jpg",
+          "name" : "Photoroom_20251216_140612",
           "position" : {
-            "scale" : 1.23,
+            "scale" : 0.8,
             "translation-in-points" : [
               0,
               0
