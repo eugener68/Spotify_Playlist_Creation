@@ -41,6 +41,8 @@ enum L10n {
         static var languageSystem: String { localized("settings.language_system", "Option to match device language") }
         static var languageEnglish: String { localized("settings.language_english", "Option to force English UI") }
         static var languageRussian: String { localized("settings.language_russian", "Option to force Russian UI") }
+        static var darkModeTitle: String { localized("settings.dark_mode_title", "Toggle label for forcing dark mode") }
+        static var darkModeSubtitle: String { localized("settings.dark_mode_subtitle", "Toggle subtitle for forcing dark mode") }
     }
 
     enum Results {

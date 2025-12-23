@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Spotify Playlist Builder</string>
+	<string>Playlist Builder for Spotify</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -18,7 +18,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Spotify Playlist Builder</string>
+	<string>Playlist Builder for Spotify</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

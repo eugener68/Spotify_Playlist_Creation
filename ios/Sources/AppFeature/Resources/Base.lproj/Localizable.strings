@@ -36,6 +36,8 @@
 "settings.language_system" = "System Language";
 "settings.language_english" = "English";
 "settings.language_russian" = "Russian";
+"settings.dark_mode_title" = "Dark Mode";
+"settings.dark_mode_subtitle" = "Override the app to always use a dark appearance.";
 
 /* Results copy */
 "results.updated_existing" = "Updated existing playlist";

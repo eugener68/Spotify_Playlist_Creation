@@ -491,7 +491,7 @@ private extension PlaylistBuilder {
             resolvedSeed = fallbackSeed == 0 ? 0xABCDEF : fallbackSeed
         }
         var generator = SeededRandomNumberGenerator(seed: resolvedSeed)
-        return tracks.shuffled(using: &generator)
+        return balancedShuffle(tracks, generator: &generator)
     }
 
     static func applyShuffleIfNeeded(
@@ -514,6 +514,41 @@ private extension PlaylistBuilder {
     static func displayString(for track: SpotifyTrack) -> String {
         let artistNames = track.artists.map { $0.name }.joined(separator: ", ")
         return "\(artistNames) – \(track.name)"
+    }
+
+    static func balancedShuffle(_ tracks: [SpotifyTrack], generator: inout RandomNumberGenerator) -> [SpotifyTrack] {
+        guard tracks.count > 2 else {
+            return tracks.shuffled(using: &generator)
+        }
+
+        var buckets = Dictionary(grouping: tracks) { canonicalArtistKey(for: $0.artists) }
+            .map { key, value in
+                ArtistBucket(key: key, tracks: value.shuffled(using: &generator))
+            }
+
+        var ordered: [SpotifyTrack] = []
+        var previousKey: String?
+
+        while !buckets.isEmpty {
+            var candidates = buckets.enumerated().filter { $0.element.key != previousKey }
+            if candidates.isEmpty {
+                candidates = Array(buckets.enumerated())
+            }
+            let randomIndex = Int(generator.next() % UInt64(max(candidates.count, 1)))
+            let bucketPosition = candidates[randomIndex].offset
+            var bucket = buckets[bucketPosition]
+            if let nextTrack = bucket.tracks.popLast() {
+                ordered.append(nextTrack)
+                previousKey = bucket.key
+            }
+            if bucket.tracks.isEmpty {
+                buckets.remove(at: bucketPosition)
+            } else {
+                buckets[bucketPosition] = bucket
+            }
+        }
+
+        return ordered
     }
 
     private static let manualArtistSearchLimit = 5
@@ -632,4 +667,9 @@ private struct VariantFilterResult {
 private struct VariantKey: Hashable {
     let artists: String
     let title: String
+}
+
+private struct ArtistBucket {
+    let key: String
+    var tracks: [SpotifyTrack]
 }

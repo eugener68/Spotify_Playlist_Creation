@@ -1,8 +1,8 @@
 /* Flow steps */
 "flow.sign_in" = "Вход";
-"flow.settings" = "Настройки";
+"flow.settings" = "Настр.";
 "flow.build" = "Сборка";
-"flow.results" = "Результаты";
+"flow.results" = "К списку";
 
 /* Builder copy */
 "builder.default_playlist_name" = "Мой плейлист";
@@ -36,6 +36,8 @@
 "settings.language_system" = "Системный";
 "settings.language_english" = "Английский";
 "settings.language_russian" = "Русский";
+"settings.dark_mode_title" = "Тёмная тема";
+"settings.dark_mode_subtitle" = "Всегда использовать тёмную тему в приложении.";
 
 /* Results copy */
 "results.updated_existing" = "Обновлён существующий плейлист";

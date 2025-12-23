@@ -194,6 +194,7 @@ public struct RootView: View {
     @StateObject private var viewModel: PlaylistBuilderViewModel
     @StateObject private var authViewModel: AuthenticationViewModel
     @State private var playlistName: String = L10n.Builder.defaultPlaylistName
+    @State private var lastDefaultPlaylistName: String = L10n.Builder.defaultPlaylistName
     @State private var manualArtists: String = "Metallica, A-ha"
     @State private var limitPerArtist: Int = 3
     @State private var maxTracks: Int = 10
@@ -206,6 +207,7 @@ public struct RootView: View {
     @State private var activeStep: FlowStep = .authentication
     @State private var artistInputFeedback: String?
     @ObservedObject private var localization = LocalizationController.shared
+    @ObservedObject private var appearance = AppearanceController.shared
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
@@ -246,6 +248,13 @@ public struct RootView: View {
                 }
             }
         }
+        .onChange(of: localization.selection) { _ in
+            let newDefault = L10n.Builder.defaultPlaylistName
+            if playlistName == lastDefaultPlaylistName {
+                playlistName = newDefault
+            }
+            lastDefaultPlaylistName = newDefault
+        }
         .task {
             await authViewModel.ensureStatusLoaded()
             updateActiveStepForAuth()
@@ -256,6 +265,7 @@ public struct RootView: View {
             allowsMultipleSelection: false,
             onCompletion: handleArtistImport(result:)
         )
+        .preferredColorScheme(appearance.preferredColorScheme)
     }
 
     @ViewBuilder
@@ -454,6 +464,14 @@ public struct RootView: View {
             Text(L10n.Builder.settingsTitle)
                 .font(.title3.bold())
             LanguageSelectorRow(selection: $localization.selection)
+            OptionToggleRow(
+                title: L10n.Settings.darkModeTitle,
+                subtitle: L10n.Settings.darkModeSubtitle,
+                isOn: Binding(
+                    get: { appearance.forceDarkMode },
+                    set: { appearance.forceDarkMode = $0 }
+                )
+            )
             OptionStepperRow(
                 title: L10n.Builder.limitPerArtistTitle,
                 subtitle: L10n.Builder.limitPerArtistSubtitle,
@@ -908,6 +926,7 @@ private struct FlowStepSelector: View {
     let isAuthenticated: Bool
     let requiresAuthentication: Bool
     let hasResults: Bool
+    @ObservedObject private var localization = LocalizationController.shared
 
     private var steps: [RootView.FlowStep] {
         RootView.FlowStep.allCases.filter { step in
@@ -916,7 +935,8 @@ private struct FlowStepSelector: View {
     }
 
     private var gridColumns: [GridItem] {
-        [GridItem(.adaptive(minimum: 86, maximum: 130), spacing: 12)]
+        let count = max(steps.count, 1)
+        return Array(repeating: GridItem(.flexible(minimum: 64), spacing: 12), count: count)
     }
 
     private func isEnabled(_ step: RootView.FlowStep) -> Bool {
@@ -931,6 +951,7 @@ private struct FlowStepSelector: View {
     }
 
     var body: some View {
+        let _ = localization.selection
         LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 12) {
             ForEach(steps) { step in
                 Button(action: { activeStep = step }) {
