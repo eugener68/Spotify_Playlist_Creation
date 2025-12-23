@@ -21,10 +21,19 @@
       ],
       "layers" : [
         {
-          "image-name" : "Photoroom_20251216_140612.jpg",
-          "name" : "Photoroom_20251216_140612",
+          "glass-specializations" : [
+            {
+              "value" : true
+            },
+            {
+              "appearance" : "dark",
+              "value" : false
+            }
+          ],
+          "image-name" : "IconNew.png",
+          "name" : "IconNew",
           "position" : {
-            "scale" : 0.8,
+            "scale" : 1.2,
             "translation-in-points" : [
               0,
               0
