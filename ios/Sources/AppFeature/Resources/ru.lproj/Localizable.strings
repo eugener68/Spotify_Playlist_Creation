@@ -63,4 +63,6 @@
 "artist_input.import_failed" = "Ошибка импорта: %@.";
 "artist_input.suggestions_title" = "Подсказки";
 "artist_input.suggestions_empty" = "Продолжайте вводить, чтобы увидеть исполнителей Spotify.";
+"artist_input.suggestions_auth_required" = "Войдите в Spotify, чтобы включить подсказки.";
+"artist_input.suggestions_error_generic" = "Не удалось загрузить подсказки. Проверьте подключение и повторите попытку.";
 "artist_input.suggestion_followers" = "%@ подписчиков";

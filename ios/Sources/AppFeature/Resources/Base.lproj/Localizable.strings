@@ -63,4 +63,6 @@
 "artist_input.import_failed" = "Import failed: %@.";
 "artist_input.suggestions_title" = "Suggestions";
 "artist_input.suggestions_empty" = "Keep typing to see Spotify matches.";
+"artist_input.suggestions_auth_required" = "Sign in with Spotify to enable suggestions.";
+"artist_input.suggestions_error_generic" = "Could not load suggestions. Check your connection and try again.";
 "artist_input.suggestion_followers" = "%@ followers";

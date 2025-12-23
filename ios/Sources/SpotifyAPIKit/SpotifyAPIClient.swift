@@ -9,6 +9,7 @@ public enum SpotifyAPIError: Error, LocalizedError {
     case rateLimited(retryAfter: TimeInterval)
     case decoding(Error)
     case transport(Error)
+    case api(status: Int, message: String)
     case unexpectedStatus(Int)
     case invalidURL
 
@@ -22,6 +23,8 @@ public enum SpotifyAPIError: Error, LocalizedError {
             return "Failed to decode Spotify response: \(error.localizedDescription)"
         case let .transport(error):
             return "Network error: \(error.localizedDescription)"
+        case let .api(status, message):
+            return "Spotify API error \(status): \(message)"
         case let .unexpectedStatus(code):
             return "Unexpected Spotify status code: \(code)"
         case .invalidURL:
@@ -96,6 +99,10 @@ public final class SpotifyAPIClient: @unchecked Sendable {
     private let baseURL = URL(string: "https://api.spotify.com/v1")!
     private let jsonDecoder: JSONDecoder
     private let jsonEncoder: JSONEncoder
+
+    /// Set to true to print request/response details for troubleshooting.
+    /// Kept internal to avoid changing the public API surface.
+    static var debugLoggingEnabled: Bool = true
 
     public init(
         configuration: SpotifyAPIConfiguration,
@@ -280,6 +287,9 @@ extension SpotifyAPIClient: ArtistSuggestionProviding {
             URLQueryItem(name: "limit", value: String(limit))
         ]
         let request = try await authorizedRequest(path: "/search", queryItems: queryItems)
+        if Self.debugLoggingEnabled {
+            print("🔎 Spotify suggestions request: \(request.url?.absoluteString ?? "<nil>")")
+        }
         let response: SearchArtistSummaryResponse = try await send(request)
         return response.artists.items.map { item in
             ArtistSummary(
@@ -363,6 +373,9 @@ private extension SpotifyAPIClient {
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw SpotifyAPIError.transport(URLError(.badServerResponse))
             }
+            if Self.debugLoggingEnabled, request.url?.path.contains("/search") == true {
+                print("🔎 Spotify suggestions status: \(httpResponse.statusCode)")
+            }
             switch httpResponse.statusCode {
             case 200 ..< 300:
                 return data
@@ -372,13 +385,55 @@ private extension SpotifyAPIClient {
                 let retryAfterValue = httpResponse.value(forHTTPHeaderField: "Retry-After") ?? "0"
                 throw SpotifyAPIError.rateLimited(retryAfter: TimeInterval(retryAfterValue) ?? 1)
             default:
+                if let apiError = decodeSpotifyWebAPIError(from: data) {
+                    if Self.debugLoggingEnabled, request.url?.path.contains("/search") == true {
+                        print("🔎 Spotify suggestions error body: \(apiError.message)")
+                    }
+                    // Common case: expired or under-scoped token.
+                    if apiError.status == 403, apiError.message.lowercased().contains("scope") {
+                        throw SpotifyAPIError.unauthorized
+                    }
+                    throw SpotifyAPIError.api(status: apiError.status, message: apiError.message)
+                }
+                if Self.debugLoggingEnabled, request.url?.path.contains("/search") == true, let body = String(data: data, encoding: .utf8), !body.isEmpty {
+                    print("🔎 Spotify suggestions error body: \(body)")
+                }
                 throw SpotifyAPIError.unexpectedStatus(httpResponse.statusCode)
             }
         } catch let error as SpotifyAPIError {
+            if Self.debugLoggingEnabled, request.url?.path.contains("/search") == true {
+                print("🔎 Spotify suggestions error: \(error.localizedDescription)")
+            }
             throw error
         } catch {
+            if Self.debugLoggingEnabled, request.url?.path.contains("/search") == true {
+                print("🔎 Spotify suggestions transport error: \(error.localizedDescription)")
+            }
             throw SpotifyAPIError.transport(error)
         }
+    }
+
+    struct SpotifyWebAPIError: Sendable {
+        let status: Int
+        let message: String
+    }
+
+    func decodeSpotifyWebAPIError(from data: Data) -> SpotifyWebAPIError? {
+        struct Envelope: Decodable {
+            struct Inner: Decodable {
+                let status: Int?
+                let message: String?
+            }
+            let error: Inner
+        }
+
+        guard let envelope = try? jsonDecoder.decode(Envelope.self, from: data) else {
+            return nil
+        }
+        guard let status = envelope.error.status, let message = envelope.error.message, !message.isEmpty else {
+            return nil
+        }
+        return SpotifyWebAPIError(status: status, message: message)
     }
 
     func endpointURL(_ path: String) -> URL {

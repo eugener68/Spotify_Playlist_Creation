@@ -110,6 +110,8 @@ enum L10n {
         }
         static var suggestionsTitle: String { localized("artist_input.suggestions_title", "Artist suggestion list title") }
         static var suggestionsEmpty: String { localized("artist_input.suggestions_empty", "Empty state for artist suggestions") }
+        static var suggestionsAuthRequired: String { localized("artist_input.suggestions_auth_required", "Message shown when Spotify authentication is required for suggestions") }
+        static var suggestionsErrorGeneric: String { localized("artist_input.suggestions_error_generic", "Fallback message for artist suggestion failures") }
         static func suggestionFollowers(_ formattedCount: String) -> String {
             String.localizedStringWithFormat(
                 localized("artist_input.suggestion_followers", "Followers detail for artist suggestion"),

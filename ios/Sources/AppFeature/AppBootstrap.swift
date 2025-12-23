@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import DomainKit
 import SpotifyAPIKit
 #if canImport(SwiftUI)
@@ -94,7 +95,8 @@ public struct AppDependencies {
     ) -> AppDependencies {
         let provider = RefreshingAccessTokenProvider(
             tokenStore: tokenStore,
-            refresher: authenticator
+            refresher: authenticator,
+            requiredScopes: Set(configuration.scopes)
         )
         let apiClient = SpotifyAPIClient(
             configuration: configuration,
@@ -213,11 +215,18 @@ public struct RootView: View {
     @ObservedObject private var localization = LocalizationController.shared
     @ObservedObject private var appearance = AppearanceController.shared
     @StateObject private var artistSuggestions: ArtistSuggestionViewModel
+    @State private var suppressArtistSuggestionUpdate = false
+#if os(iOS)
+    @State private var keyboardHeight: CGFloat = 0
+#endif
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
     #endif
     @Environment(\.colorScheme) private var colorScheme
+#if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+#endif
 
     public var body: some View {
         ZStack {
@@ -242,6 +251,7 @@ public struct RootView: View {
         }
         .onChange(of: authViewModel.isAuthenticated) { _ in
             updateActiveStepForAuth()
+            artistSuggestions.clear()
         }
         .onChange(of: authViewModel.requiresAuthentication) { _ in
             updateActiveStepForAuth()
@@ -271,6 +281,27 @@ public struct RootView: View {
             onCompletion: handleArtistImport(result:)
         )
         .preferredColorScheme(appearance.preferredColorScheme)
+#if os(iOS)
+        .overlay(alignment: .bottom) {
+            if shouldUseFloatingArtistSuggestionOverlay {
+                artistSuggestionOverlay
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: shouldShowFloatingArtistSuggestions)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notification in
+            guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            let duration = (notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+            withAnimation(.easeOut(duration: duration)) {
+                keyboardHeight = keyboardHeightExcludingSafeArea(for: frame)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+            let duration = (notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+            withAnimation(.easeOut(duration: duration)) {
+                keyboardHeight = 0
+            }
+        }
+#endif
     }
 
     @ViewBuilder
@@ -305,7 +336,7 @@ public struct RootView: View {
                 playlistCard
                 artistsCard
             }
-            .padding(.bottom)
+            .padding(.bottom, creationScrollBottomPadding)
         }
     }
 
@@ -434,10 +465,11 @@ public struct RootView: View {
             Text(L10n.Builder.manualArtistHint)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            if artistSuggestions.isLoading || !artistSuggestions.suggestions.isEmpty {
+            if shouldShowInlineArtistSuggestions && hasArtistSuggestions {
                 ArtistSuggestionsList(
                     suggestions: artistSuggestions.suggestions,
                     isLoading: artistSuggestions.isLoading,
+                    errorState: artistSuggestions.errorState,
                     onSelect: insertArtistSuggestion
                 )
                 .transition(.opacity)
@@ -539,6 +571,104 @@ public struct RootView: View {
         colorScheme == .dark ? Color.black.opacity(0.5) : Color.black.opacity(0.08)
     }
 
+    private var hasArtistSuggestions: Bool {
+        artistSuggestions.isLoading || !artistSuggestions.suggestions.isEmpty || artistSuggestions.errorState != nil
+    }
+
+    private var canRequestArtistSuggestions: Bool {
+        !isAuthenticationRequiredButUnavailable
+    }
+
+        private var shouldShowInlineArtistSuggestions: Bool {
+    #if os(iOS)
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        return isPad && horizontalSizeClass == .regular
+    #else
+        return true
+    #endif
+        }
+
+        private var shouldUseFloatingArtistSuggestionOverlay: Bool {
+    #if os(iOS)
+        if shouldShowInlineArtistSuggestions {
+            return false
+        }
+        return true
+    #else
+        return false
+    #endif
+        }
+
+    private var creationScrollBottomPadding: CGFloat {
+#if os(iOS)
+        let base: CGFloat = 16
+        guard shouldUseFloatingArtistSuggestionOverlay else { return base }
+        guard shouldShowFloatingArtistSuggestions else { return base }
+        return base + floatingPanelMaxHeight + 32
+#else
+        return 16
+#endif
+    }
+
+#if os(iOS)
+    @ViewBuilder
+    private var artistSuggestionOverlay: some View {
+        if shouldShowFloatingArtistSuggestions {
+            VStack(spacing: 12) {
+                ScrollView {
+                    ArtistSuggestionsList(
+                        suggestions: artistSuggestions.suggestions,
+                        isLoading: artistSuggestions.isLoading,
+                        errorState: artistSuggestions.errorState,
+                        onSelect: insertArtistSuggestion
+                    )
+                    .padding(.vertical, 4)
+                }
+                .scrollIndicators(.hidden)
+                .frame(maxWidth: 520)
+                .frame(maxHeight: floatingPanelMaxHeight)
+                .shadow(color: shadowColor.opacity(0.25), radius: 20, y: 8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal)
+            .padding(.bottom, floatingOverlayBottomPadding)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    private var shouldShowFloatingArtistSuggestions: Bool {
+        shouldUseFloatingArtistSuggestionOverlay && activeStep == .creation && hasArtistSuggestions
+    }
+
+    private var floatingPanelMaxHeight: CGFloat {
+        let screenHeight = UIScreen.main.bounds.height
+        if keyboardHeight > 0 {
+            let available = screenHeight - keyboardHeight - 140
+            return max(180, min(available, 320))
+        } else {
+            return min(screenHeight * 0.35, 300)
+        }
+    }
+
+    private var floatingOverlayBottomPadding: CGFloat {
+        if keyboardHeight > 0 {
+            return keyboardHeight + 12
+        }
+        return 16
+    }
+
+    private func keyboardHeightExcludingSafeArea(for frame: CGRect) -> CGFloat {
+        max(0, frame.height - keyWindowSafeAreaInsetBottom())
+    }
+
+    private func keyWindowSafeAreaInsetBottom() -> CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first(where: { $0.isKeyWindow })?.safeAreaInsets.bottom ?? 0
+    }
+#endif
+
     private func updateActiveStepForAuth() {
         if authViewModel.requiresAuthentication && !authViewModel.isAuthenticated {
             activeStep = .authentication
@@ -626,14 +756,23 @@ public struct RootView: View {
     }
 
     private func handleManualArtistInputChange(_ value: String) {
+        if suppressArtistSuggestionUpdate {
+            suppressArtistSuggestionUpdate = false
+            return
+        }
         guard let info = currentArtistTokenInfo(in: value) else {
             artistSuggestions.clear()
+            return
+        }
+        guard canRequestArtistSuggestions else {
+            artistSuggestions.markAuthenticationRequired()
             return
         }
         artistSuggestions.updateQuery(info.token)
     }
 
     private func insertArtistSuggestion(_ suggestion: ArtistSuggestionViewModel.Suggestion) {
+        suppressArtistSuggestionUpdate = true
         if let info = currentArtistTokenInfo(in: manualArtists) {
             manualArtists.replaceSubrange(info.range, with: suggestion.name)
         } else if manualArtists.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -903,7 +1042,7 @@ private struct OptionStepperRow: View {
     }
 
     private var optionRowBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+        colorScheme == .dark ? Color.white.opacity(0.18) : Color.black.opacity(0.12)
     }
 }
 
@@ -993,6 +1132,7 @@ private struct UploadRowView: View {
 private struct ArtistSuggestionsList: View {
     let suggestions: [ArtistSuggestionViewModel.Suggestion]
     let isLoading: Bool
+    let errorState: ArtistSuggestionViewModel.ErrorState?
     let onSelect: (ArtistSuggestionViewModel.Suggestion) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -1010,7 +1150,17 @@ private struct ArtistSuggestionsList: View {
                         .scaleEffect(0.7)
                 }
             }
-            if suggestions.isEmpty {
+            if let errorState {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                        .imageScale(.small)
+                    Text(errorState.description)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+            } else if suggestions.isEmpty {
                 Text(L10n.ArtistInput.suggestionsEmpty)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1029,7 +1179,7 @@ private struct ArtistSuggestionsList: View {
     }
 
     private var optionRowBackground: Color {
-        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+        colorScheme == .dark ? Color.white.opacity(0.60) : Color.black.opacity(0.10)
     }
 }
 
