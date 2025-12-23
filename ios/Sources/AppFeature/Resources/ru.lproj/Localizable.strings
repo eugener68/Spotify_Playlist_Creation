@@ -1,0 +1,66 @@
+/* Flow steps */
+"flow.sign_in" = "Вход";
+"flow.settings" = "Настр.";
+"flow.build" = "Сборка";
+"flow.results" = "К списку";
+
+/* Builder copy */
+"builder.default_playlist_name" = "Мой плейлист";
+"builder.spotify_account_title" = "Аккаунт Spotify";
+"builder.latest_build_title" = "Последняя сборка";
+"builder.upload_order_title" = "Порядок загрузки";
+"builder.empty_results_title" = "Сборки пока отсутствуют";
+"builder.empty_results_description" = "Запустите сборщик, чтобы увидеть предварительный плейлист.";
+"builder.building_button" = "Выполняется…";
+"builder.run_button" = "Запустить сборку плейлиста";
+"builder.playlist_name_label" = "Название плейлиста:";
+"builder.playlist_name_placeholder" = "Название плейлиста";
+"builder.date_stamp_toggle" = "Добавить дату в название";
+"builder.dry_run_toggle" = "Пробный запуск";
+"builder.manual_artist_list_title" = "Список исполнителей вручную";
+"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки. В демо-данных уже есть Metallica и A-ha.";
+"builder.import_csv_button" = "Импортировать список исполнителей (CSV/текст)";
+"builder.paste_button" = "Вставить список исполнителей";
+"builder.settings_title" = "Настройки";
+"builder.limit_per_artist_title" = "Треков на исполнителя";
+"builder.limit_per_artist_subtitle" = "Сколько треков на каждого исполнителя. Максимум 10.";
+"builder.max_tracks_title" = "Всего треков в плейлисте";
+"builder.max_tracks_subtitle" = "Максимальное количество треков 100.";
+"builder.shuffle_title" = "Перемешать треки";
+"builder.shuffle_subtitle" = "Смешанный порядок исполнения треков";
+"builder.prefer_original_title" = "Предпочитать оригинальные версии";
+"builder.prefer_original_subtitle" = "Отдавайте предпочтение оригинальным (не ремастер, не ремикс) версиям, если они доступны.";
+
+/* Settings */
+"settings.language_title" = "Язык интерфейса";
+"settings.language_system" = "Системный";
+"settings.language_english" = "Английский";
+"settings.language_russian" = "Русский";
+"settings.dark_mode_title" = "Тёмная тема";
+"settings.dark_mode_subtitle" = "Всегда использовать тёмную тему в приложении.";
+
+/* Results copy */
+"results.updated_existing" = "Обновлён существующий плейлист";
+"results.created_new" = "Создан новый плейлист";
+"results.prepared_uploaded" = "Подготовлено: %lld • Загружено: %lld";
+
+/* Authentication */
+"auth.status_checking" = "Проверяем текущую сессию…";
+"auth.status_signing_in" = "Ожидание входа в Spotify…";
+"auth.cancel" = "Отменить";
+"auth.signed_in" = "Вход выполнен";
+"auth.open_dashboard" = "Открыть приложение/кабинет Spotify";
+"auth.sign_out" = "Выйти";
+"auth.sign_in" = "Войти через Spotify";
+"auth.unavailable" = "Авторизация недоступна в этой сборке.";
+
+/* Artist input feedback */
+"artist_input.clipboard_empty" = "Буфер обмена пуст.";
+"artist_input.clipboard_none" = "Новых исполнителей в буфере обмена не найдено.";
+"artist_input.import_permission_denied" = "Не удалось импортировать: нет доступа к %@.";
+"artist_input.import_could_not_read" = "Не удалось прочитать %@.";
+"artist_input.import_none_in_file" = "Новых исполнителей в %@ не найдено.";
+"artist_input.import_failed" = "Ошибка импорта: %@.";
+"artist_input.suggestions_title" = "Подсказки";
+"artist_input.suggestions_empty" = "Продолжайте вводить, чтобы увидеть исполнителей Spotify.";
+"artist_input.suggestion_followers" = "%@ подписчиков";
