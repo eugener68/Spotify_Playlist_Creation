@@ -108,6 +108,14 @@ enum L10n {
                 message
             )
         }
+        static var suggestionsTitle: String { localized("artist_input.suggestions_title", "Artist suggestion list title") }
+        static var suggestionsEmpty: String { localized("artist_input.suggestions_empty", "Empty state for artist suggestions") }
+        static func suggestionFollowers(_ formattedCount: String) -> String {
+            String.localizedStringWithFormat(
+                localized("artist_input.suggestion_followers", "Followers detail for artist suggestion"),
+                formattedCount
+            )
+        }
     }
 
     private static func localized(_ key: String, _ comment: String) -> String {

@@ -168,7 +168,9 @@ public struct RootView: View {
         }
     }
 
-    public init(dependencies: AppDependencies) {
+    public init(dependencies: AppDependencies, artistSuggestionProvider: ArtistSuggestionProviding? = nil) {
+        let suggestionProvider = artistSuggestionProvider ?? dependencies.apiClient
+        _artistSuggestions = StateObject(wrappedValue: ArtistSuggestionViewModel(provider: suggestionProvider))
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
     }
@@ -179,14 +181,16 @@ public struct RootView: View {
     public init(
         configuration: SpotifyAPIConfiguration,
         keychainService: String = "autoplaylistbuilder.tokens",
-        keychainAccount: String = "current-user"
+        keychainAccount: String = "current-user",
+        artistSuggestionProvider: ArtistSuggestionProviding? = nil
     ) {
         self.init(
             dependencies: .liveUsingKeychain(
                 configuration: configuration,
                 service: keychainService,
                 account: keychainAccount
-            )
+            ),
+            artistSuggestionProvider: artistSuggestionProvider
         )
     }
 #endif
@@ -208,6 +212,7 @@ public struct RootView: View {
     @State private var artistInputFeedback: String?
     @ObservedObject private var localization = LocalizationController.shared
     @ObservedObject private var appearance = AppearanceController.shared
+    @StateObject private var artistSuggestions: ArtistSuggestionViewModel
     #if canImport(AuthenticationServices)
     @State private var webAuthSession: ASWebAuthenticationSession?
     private let presentationContextProvider = DefaultWebAuthenticationPresentationContextProvider()
@@ -425,9 +430,18 @@ public struct RootView: View {
                 .padding(10)
                 .background(editorBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .onChange(of: manualArtists, perform: handleManualArtistInputChange)
             Text(L10n.Builder.manualArtistHint)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            if artistSuggestions.isLoading || !artistSuggestions.suggestions.isEmpty {
+                ArtistSuggestionsList(
+                    suggestions: artistSuggestions.suggestions,
+                    isLoading: artistSuggestions.isLoading,
+                    onSelect: insertArtistSuggestion
+                )
+                .transition(.opacity)
+            }
             HStack {
                 Button(action: { isImportingArtists = true }) {
                     Label {
@@ -611,6 +625,65 @@ public struct RootView: View {
         return results
     }
 
+    private func handleManualArtistInputChange(_ value: String) {
+        guard let info = currentArtistTokenInfo(in: value) else {
+            artistSuggestions.clear()
+            return
+        }
+        artistSuggestions.updateQuery(info.token)
+    }
+
+    private func insertArtistSuggestion(_ suggestion: ArtistSuggestionViewModel.Suggestion) {
+        if let info = currentArtistTokenInfo(in: manualArtists) {
+            manualArtists.replaceSubrange(info.range, with: suggestion.name)
+        } else if manualArtists.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            manualArtists = suggestion.name
+        } else {
+            manualArtists.append(separatorForAppending() + suggestion.name)
+        }
+        artistSuggestions.clear()
+    }
+
+    private func separatorForAppending() -> String {
+        guard let last = manualArtists.last else { return "" }
+        if last == "\n" {
+            return ""
+        }
+        if last == "," || last == ";" {
+            return " "
+        }
+        if last.isWhitespace || manualArtists.isEmpty {
+            return ""
+        }
+        return ", "
+    }
+
+    private func currentArtistTokenInfo(in text: String) -> (range: Range<String.Index>, token: String)? {
+        guard !text.isEmpty else { return nil }
+        let separators = CharacterSet(charactersIn: ",;\n")
+        var end = text.endIndex
+        while end > text.startIndex, text[text.index(before: end)].isWhitespace {
+            end = text.index(before: end)
+        }
+        guard end > text.startIndex else { return nil }
+        var start = end
+        while start > text.startIndex {
+            let previous = text.index(before: start)
+            let character = text[previous]
+            if character.unicodeScalars.allSatisfy({ separators.contains($0) }) {
+                start = text.index(after: previous)
+                break
+            }
+            start = previous
+        }
+        while start < end, text[start].isWhitespace {
+            start = text.index(after: start)
+        }
+        guard start < end else { return nil }
+        let token = String(text[start..<end])
+        return (start..<end, token)
+    }
+
     private var pasteboardString: String? {
     #if canImport(UIKit)
         UIPasteboard.general.string
@@ -786,7 +859,10 @@ public struct RootView: View {
 #if DEBUG
 struct RootView_Previews: PreviewProvider {
     static var previews: some View {
-        RootView(dependencies: .demo())
+        RootView(
+            dependencies: .demo(),
+            artistSuggestionProvider: DemoArtistSuggestionProvider()
+        )
     }
 }
 #endif
@@ -911,6 +987,115 @@ private struct UploadRowView: View {
                 showSecondary.toggle()
             }
         }
+    }
+}
+
+private struct ArtistSuggestionsList: View {
+    let suggestions: [ArtistSuggestionViewModel.Suggestion]
+    let isLoading: Bool
+    let onSelect: (ArtistSuggestionViewModel.Suggestion) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text(L10n.ArtistInput.suggestionsTitle)
+                    .font(.caption.weight(.semibold))
+                    .textCase(.uppercase)
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(0.7)
+                }
+            }
+            if suggestions.isEmpty {
+                Text(L10n.ArtistInput.suggestionsEmpty)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(suggestions) { suggestion in
+                    Button(action: { onSelect(suggestion) }) {
+                        ArtistSuggestionRow(suggestion: suggestion)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(12)
+        .background(optionRowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var optionRowBackground: Color {
+        colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
+    }
+}
+
+private struct ArtistSuggestionRow: View {
+    let suggestion: ArtistSuggestionViewModel.Suggestion
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ArtistSuggestionAvatar(url: suggestion.imageURL)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(suggestion.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                if let subtitle = suggestion.subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct ArtistSuggestionAvatar: View {
+    let url: URL?
+
+    var body: some View {
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        placeholder
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        placeholder
+                    @unknown default:
+                        placeholder
+                    }
+                }
+            } else {
+                placeholder
+            }
+        }
+        .frame(width: 40, height: 40)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color.black.opacity(0.05), lineWidth: 0.5)
+        )
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(Color.secondary.opacity(0.2))
+            .overlay(
+                Image(systemName: "music.mic")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            )
     }
 }
 

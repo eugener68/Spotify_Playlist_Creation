@@ -134,3 +134,20 @@ private actor DemoPlaylistEditor: SpotifyPlaylistEditing {
         storedTracks = uris
     }
 }
+
+struct DemoArtistSuggestionProvider: ArtistSuggestionProviding {
+    private let catalog: [ArtistSummary] = [
+        ArtistSummary(id: "metallica", name: "Metallica", followers: 21000000, genres: ["metal"], imageURL: nil),
+        ArtistSummary(id: "aha", name: "A-ha", followers: 3500000, genres: ["synthpop"], imageURL: nil),
+        ArtistSummary(id: "adele", name: "Adele", followers: 32000000, genres: ["pop"], imageURL: nil)
+    ]
+
+    func searchArtistSummaries(_ query: String, limit: Int) async throws -> [ArtistSummary] {
+        guard !query.isEmpty else { return [] }
+        let lowercased = query.lowercased()
+        return catalog
+            .filter { $0.name.lowercased().contains(lowercased) }
+            .prefix(limit)
+            .map { $0 }
+    }
+}

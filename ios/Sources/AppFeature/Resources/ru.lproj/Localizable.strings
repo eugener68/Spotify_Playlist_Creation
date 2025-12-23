@@ -17,13 +17,13 @@
 "builder.playlist_name_placeholder" = "Название плейлиста";
 "builder.date_stamp_toggle" = "Добавить дату в название";
 "builder.dry_run_toggle" = "Пробный запуск";
-"builder.manual_artist_list_title" = "Список артистов вручную";
-"builder.manual_artist_hint" = "Разделяйте артистов запятыми или переводами строки. В демо-данных уже есть Metallica и A-ha.";
-"builder.import_csv_button" = "Импортировать список артистов (CSV/текст)";
-"builder.paste_button" = "Вставить список артистов";
+"builder.manual_artist_list_title" = "Список исполнителей вручную";
+"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки. В демо-данных уже есть Metallica и A-ha.";
+"builder.import_csv_button" = "Импортировать список исполнителей (CSV/текст)";
+"builder.paste_button" = "Вставить список исполнителей";
 "builder.settings_title" = "Настройки";
-"builder.limit_per_artist_title" = "Треков на артиста";
-"builder.limit_per_artist_subtitle" = "Сколько треков на каждого артиста. Максимум 10.";
+"builder.limit_per_artist_title" = "Треков на исполнителя";
+"builder.limit_per_artist_subtitle" = "Сколько треков на каждого исполнителя. Максимум 10.";
 "builder.max_tracks_title" = "Всего треков в плейлисте";
 "builder.max_tracks_subtitle" = "Максимальное количество треков 100.";
 "builder.shuffle_title" = "Перемешать треки";
@@ -56,8 +56,11 @@
 
 /* Artist input feedback */
 "artist_input.clipboard_empty" = "Буфер обмена пуст.";
-"artist_input.clipboard_none" = "Новых артистов в буфере обмена не найдено.";
+"artist_input.clipboard_none" = "Новых исполнителей в буфере обмена не найдено.";
 "artist_input.import_permission_denied" = "Не удалось импортировать: нет доступа к %@.";
 "artist_input.import_could_not_read" = "Не удалось прочитать %@.";
-"artist_input.import_none_in_file" = "Новых артистов в %@ не найдено.";
+"artist_input.import_none_in_file" = "Новых исполнителей в %@ не найдено.";
 "artist_input.import_failed" = "Ошибка импорта: %@.";
+"artist_input.suggestions_title" = "Подсказки";
+"artist_input.suggestions_empty" = "Продолжайте вводить, чтобы увидеть исполнителей Spotify.";
+"artist_input.suggestion_followers" = "%@ подписчиков";

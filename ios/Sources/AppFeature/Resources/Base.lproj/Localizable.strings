@@ -61,3 +61,6 @@
 "artist_input.import_could_not_read" = "Could not read %@.";
 "artist_input.import_none_in_file" = "No new artists found in %@.";
 "artist_input.import_failed" = "Import failed: %@.";
+"artist_input.suggestions_title" = "Suggestions";
+"artist_input.suggestions_empty" = "Keep typing to see Spotify matches.";
+"artist_input.suggestion_followers" = "%@ followers";

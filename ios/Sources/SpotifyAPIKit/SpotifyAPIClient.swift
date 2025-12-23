@@ -46,6 +46,26 @@ public protocol SpotifyAccessTokenProviding: Sendable {
     func accessToken() async throws -> String
 }
 
+public protocol ArtistSuggestionProviding: Sendable {
+    func searchArtistSummaries(_ query: String, limit: Int) async throws -> [ArtistSummary]
+}
+
+public struct ArtistSummary: Identifiable, Sendable {
+    public let id: String
+    public let name: String
+    public let followers: Int?
+    public let genres: [String]
+    public let imageURL: URL?
+
+    public init(id: String, name: String, followers: Int?, genres: [String], imageURL: URL?) {
+        self.id = id
+        self.name = name
+        self.followers = followers
+        self.genres = genres
+        self.imageURL = imageURL
+    }
+}
+
 public actor InMemoryAccessTokenProvider: SpotifyAccessTokenProviding {
     public enum TokenError: Error {
         case missing
@@ -252,6 +272,27 @@ extension SpotifyAPIClient: SpotifyPlaylistEditing {
     }
 }
 
+extension SpotifyAPIClient: ArtistSuggestionProviding {
+    public func searchArtistSummaries(_ query: String, limit: Int) async throws -> [ArtistSummary] {
+        let queryItems = [
+            URLQueryItem(name: "type", value: "artist"),
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "limit", value: String(limit))
+        ]
+        let request = try await authorizedRequest(path: "/search", queryItems: queryItems)
+        let response: SearchArtistSummaryResponse = try await send(request)
+        return response.artists.items.map { item in
+            ArtistSummary(
+                id: item.id,
+                name: item.name,
+                followers: item.followers?.total,
+                genres: item.genres ?? [],
+                imageURL: item.images?.first?.url
+            )
+        }
+    }
+}
+
 // MARK: - Request Helpers
 
 private extension SpotifyAPIClient {
@@ -353,6 +394,25 @@ private extension SpotifyAPIClient {
 private struct SearchArtistsResponse: Decodable {
     struct ArtistContainer: Decodable {
         let items: [SpotifyArtist]
+    }
+
+    let artists: ArtistContainer
+}
+
+private struct SearchArtistSummaryResponse: Decodable {
+    struct ArtistContainer: Decodable {
+        let items: [Artist]
+    }
+
+    struct Artist: Decodable {
+        struct Followers: Decodable { let total: Int? }
+        struct Image: Decodable { let url: URL; let width: Int?; let height: Int? }
+
+        let id: String
+        let name: String
+        let followers: Followers?
+        let genres: [String]?
+        let images: [Image]?
     }
 
     let artists: ArtistContainer

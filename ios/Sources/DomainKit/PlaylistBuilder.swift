@@ -516,7 +516,7 @@ private extension PlaylistBuilder {
         return "\(artistNames) – \(track.name)"
     }
 
-    static func balancedShuffle(_ tracks: [SpotifyTrack], generator: inout RandomNumberGenerator) -> [SpotifyTrack] {
+    static func balancedShuffle<G: RandomNumberGenerator>(_ tracks: [SpotifyTrack], generator: inout G) -> [SpotifyTrack] {
         guard tracks.count > 2 else {
             return tracks.shuffled(using: &generator)
         }

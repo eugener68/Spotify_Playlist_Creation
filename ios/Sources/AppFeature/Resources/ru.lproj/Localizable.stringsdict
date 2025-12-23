@@ -13,13 +13,13 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>Добавлен %d новый артист из буфера обмена.</string>
+			<string>Добавлен %d новый исполнитель из буфера обмена.</string>
 			<key>few</key>
-			<string>Добавлено %d новых артиста из буфера обмена.</string>
+			<string>Добавлено %d новых исполнителя из буфера обмена.</string>
 			<key>many</key>
-			<string>Добавлено %d новых артистов из буфера обмена.</string>
+			<string>Добавлено %d новых исполнителей из буфера обмена.</string>
 			<key>other</key>
-			<string>Добавлено %d новых артистов из буфера обмена.</string>
+			<string>Добавлено %d новых исполнителей из буфера обмена.</string>
 		</dict>
 	</dict>
 	<key>artist_input.import_added_from_file</key>
@@ -33,13 +33,13 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>Добавлен %d новый артист из %2$@.</string>
+			<string>Добавлен %d новый исполнитель из %2$@.</string>
 			<key>few</key>
-			<string>Добавлено %d новых артиста из %2$@.</string>
+			<string>Добавлено %d новых исполнителя из %2$@.</string>
 			<key>many</key>
-			<string>Добавлено %d новых артистов из %2$@.</string>
+			<string>Добавлено %d новых исполнителей из %2$@.</string>
 			<key>other</key>
-			<string>Добавлено %d новых артистов из %2$@.</string>
+			<string>Добавлено %d новых исполнителей из %2$@.</string>
 		</dict>
 	</dict>
 </dict>
