@@ -25,7 +25,7 @@
 "builder.limit_per_artist_title" = "Limit Per Artist";
 "builder.limit_per_artist_subtitle" = "Number of top tracks to fetch per artist. Max is 10.";
 "builder.max_tracks_title" = "Max Tracks";
-"builder.max_tracks_subtitle" = "Cap the total tracks before upload. Max is 100.";
+"builder.max_tracks_subtitle" = "Cap the total tracks before upload. Max is 250.";
 "builder.shuffle_title" = "Shuffle Results";
 "builder.shuffle_subtitle" = "Randomize order using a deterministic seed.";
 "builder.prefer_original_title" = "Prefer Original Versions";
@@ -63,4 +63,6 @@
 "artist_input.import_failed" = "Import failed: %@.";
 "artist_input.suggestions_title" = "Suggestions";
 "artist_input.suggestions_empty" = "Keep typing to see Spotify matches.";
+"artist_input.suggestions_auth_required" = "Sign in with Spotify to enable suggestions.";
+"artist_input.suggestions_error_generic" = "Could not load suggestions. Check your connection and try again.";
 "artist_input.suggestion_followers" = "%@ followers";

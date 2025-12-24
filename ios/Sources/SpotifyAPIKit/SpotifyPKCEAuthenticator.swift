@@ -110,6 +110,9 @@ public final class SpotifyPKCEAuthenticator: SpotifyTokenRefreshing, Sendable {
             throw SpotifyAPIError.transport(URLError(.badServerResponse))
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
+            if let details = decodeTokenError(from: data) {
+                throw SpotifyAPIError.api(status: httpResponse.statusCode, message: details)
+            }
             if httpResponse.statusCode == 400 || httpResponse.statusCode == 401 {
                 throw SpotifyAPIError.unauthorized
             }
@@ -120,5 +123,27 @@ public final class SpotifyPKCEAuthenticator: SpotifyTokenRefreshing, Sendable {
         } catch {
             throw SpotifyAPIError.decoding(error)
         }
+    }
+
+    private func decodeTokenError(from data: Data) -> String? {
+        struct TokenError: Decodable {
+            let error: String?
+            let errorDescription: String?
+
+            enum CodingKeys: String, CodingKey {
+                case error
+                case errorDescription = "error_description"
+            }
+        }
+
+        guard let decoded = try? JSONDecoder().decode(TokenError.self, from: data) else {
+            return nil
+        }
+
+        let parts = [decoded.error, decoded.errorDescription].compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !parts.isEmpty else {
+            return nil
+        }
+        return parts.joined(separator: ": ")
     }
 }

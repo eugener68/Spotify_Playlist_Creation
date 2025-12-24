@@ -11,7 +11,8 @@ struct AutoPlaylistBuilderApp: App {
             RootView(
                 configuration: configuration,
                 keychainService: AppConfiguration.keychainService,
-                keychainAccount: AppConfiguration.keychainAccount
+                keychainAccount: AppConfiguration.keychainAccount,
+                artistSuggestionProvider: AppConfiguration.artistSuggestionProvider
             )
         }
     }

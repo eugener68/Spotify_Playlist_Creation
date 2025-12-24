@@ -11,12 +11,28 @@ final class ArtistSuggestionViewModel: ObservableObject {
         let imageURL: URL?
     }
 
+    enum ErrorState: Equatable {
+        case authenticationRequired
+        case message(String)
+
+        var description: String {
+            switch self {
+            case .authenticationRequired:
+                return L10n.ArtistInput.suggestionsAuthRequired
+            case let .message(text):
+                return text
+            }
+        }
+    }
+
     @Published private(set) var suggestions: [Suggestion] = []
     @Published private(set) var isLoading = false
+    @Published private(set) var errorState: ErrorState?
 
     private let provider: ArtistSuggestionProviding
     private var lookupTask: Task<Void, Never>?
     private let limit: Int
+    private var activeQuery: String?
 
     init(provider: ArtistSuggestionProviding, limit: Int = 6) {
         self.provider = provider
@@ -33,8 +49,20 @@ final class ArtistSuggestionViewModel: ObservableObject {
         guard trimmed.count >= 2 else {
             suggestions = []
             isLoading = false
+            errorState = nil
+            activeQuery = nil
             return
         }
+
+        // Avoid refetching the same query repeatedly (e.g. when a larger text editor changes
+        // but the current token stays the same).
+        if trimmed == activeQuery {
+            return
+        }
+
+        activeQuery = trimmed
+        isLoading = true
+        errorState = nil
         lookupTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -54,6 +82,16 @@ final class ArtistSuggestionViewModel: ObservableObject {
         lookupTask?.cancel()
         suggestions = []
         isLoading = false
+        errorState = nil
+        activeQuery = nil
+    }
+
+    func markAuthenticationRequired() {
+        lookupTask?.cancel()
+        suggestions = []
+        isLoading = false
+        errorState = .authenticationRequired
+        activeQuery = nil
     }
 
     private func performSearch(query: String) async {
@@ -69,10 +107,26 @@ final class ArtistSuggestionViewModel: ObservableObject {
                     imageURL: summary.imageURL
                 )
             }
+            errorState = nil
         } catch is CancellationError {
             // Ignore cancellation, a new lookup has been scheduled.
+        } catch let spotifyError as SpotifyAPIError {
+            suggestions = []
+            switch spotifyError {
+            case .unauthorized:
+                errorState = .authenticationRequired
+            default:
+                // Surface the actual Spotify error description (e.g. transport/rate limit/status code)
+                // instead of masking everything as a generic connection error.
+                let message = spotifyError.localizedDescription.isEmpty
+                    ? L10n.ArtistInput.suggestionsErrorGeneric
+                    : spotifyError.localizedDescription
+                errorState = .message(message)
+            }
         } catch {
             suggestions = []
+            let message = error.localizedDescription.isEmpty ? L10n.ArtistInput.suggestionsErrorGeneric : error.localizedDescription
+            errorState = .message(message)
         }
     }
 

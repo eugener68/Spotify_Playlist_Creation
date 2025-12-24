@@ -24,11 +24,16 @@ public struct SpotifyTokenSet: Codable, Equatable, Sendable {
         self.tokenType = tokenType
     }
 
-    public init(response: SpotifyTokenResponse, fallbackRefreshToken: String? = nil, issuedAt: Date = .now) {
+    public init(
+        response: SpotifyTokenResponse,
+        fallbackRefreshToken: String? = nil,
+        fallbackScope: String? = nil,
+        issuedAt: Date = .now
+    ) {
         self.accessToken = response.accessToken
         self.refreshToken = response.refreshToken ?? fallbackRefreshToken
         self.expiresAt = issuedAt.addingTimeInterval(response.expiresIn)
-        self.scope = response.scope
+        self.scope = response.scope ?? fallbackScope
         self.tokenType = response.tokenType
     }
 
