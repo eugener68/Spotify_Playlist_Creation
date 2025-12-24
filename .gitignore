@@ -183,6 +183,9 @@ ios/.build/
 ios/.swiftpm/
 ios/DerivedData/
 
+# Local iOS backup snapshots
+ios_local_backup_*/
+
 # Python virtualenvs created by tooling scripts
 .python-version
 .direnv/
