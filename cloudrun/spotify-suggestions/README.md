@@ -7,6 +7,11 @@ This service exposes a single endpoint that returns artist suggestions using Spo
 - `GET /suggestions?q=<query>&limit=<n>`
 - Optional header: `x-api-key: <SUGGESTIONS_API_KEY>`
 
+Also:
+
+- `POST /artist-ideas` with JSON body `{ "prompt": "...", "artistCount": 20, "userId": "optional" }`
+- Optional header: `x-api-key: <SUGGESTIONS_API_KEY>`
+
 Response:
 
 ```json
@@ -20,6 +25,9 @@ Response:
 
 Optional:
 - `SUGGESTIONS_API_KEY` (recommended)
+
+AI (optional):
+- `GEMINI_API_KEY` (required for `POST /artist-ideas`)
 
 ## Deploy (gcloud)
 
@@ -50,4 +58,8 @@ gcloud run deploy spotify-suggestions \
 ```bash
 curl -H "x-api-key: YOUR_LONG_RANDOM_API_KEY" \
   "https://YOUR_RUN_URL/suggestions?q=A-h&limit=6"
+
+curl -X POST -H "Content-Type: application/json" -H "x-api-key: YOUR_LONG_RANDOM_API_KEY" \
+  -d '{"prompt":"focus music, minimal lyrics, 2010s-present","artistCount":12}' \
+  "https://YOUR_RUN_URL/artist-ideas"
 ```

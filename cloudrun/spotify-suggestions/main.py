@@ -1,4 +1,5 @@
 import base64
+import json
 import os
 import time
 from typing import Optional
@@ -17,6 +18,97 @@ if not SPOTIFY_CLIENT_SECRET:
     raise RuntimeError("SPOTIFY_CLIENT_SECRET is required")
 
 SUGGESTIONS_API_KEY = os.environ.get("SUGGESTIONS_API_KEY")
+
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+
+def _require_api_key(x_api_key: Optional[str]) -> None:
+    if SUGGESTIONS_API_KEY and x_api_key != SUGGESTIONS_API_KEY:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+def _extract_json_object(text: str) -> Optional[dict]:
+    if not text:
+        return None
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    candidate = text[start : end + 1]
+    try:
+        value = json.loads(candidate)
+    except Exception:
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _sanitize_artist_names(raw: object, limit: int) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+
+    def consider(value: object) -> None:
+        if not isinstance(value, str):
+            return
+        cleaned = value.strip()
+        if not cleaned:
+            return
+        key = cleaned.casefold()
+        if key in seen:
+            return
+        seen.add(key)
+        names.append(cleaned)
+
+    if isinstance(raw, dict):
+        raw = raw.get("artists")
+
+    if isinstance(raw, list):
+        for item in raw:
+            consider(item)
+            if len(names) >= limit:
+                break
+        return names
+
+    if isinstance(raw, str):
+        # Fallback: one per line.
+        for line in raw.splitlines():
+            consider(line)
+            if len(names) >= limit:
+                break
+        return names
+
+    return names
+
+
+async def _spotify_search_artist_summary(name: str) -> Optional[dict]:
+    token = await _get_app_access_token()
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(
+            "https://api.spotify.com/v1/search",
+            params={"type": "artist", "q": name, "limit": 1},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"spotify_search_error: {resp.text}")
+
+    data = resp.json() or {}
+    items = (data.get("artists") or {}).get("items") or []
+    if not items:
+        return None
+
+    item = items[0] or {}
+    artist_id = item.get("id")
+    if not artist_id:
+        return None
+    images = item.get("images") or []
+    image_url = images[0].get("url") if images else None
+    return {
+        "id": artist_id,
+        "name": item.get("name") or "",
+        "followers": (item.get("followers") or {}).get("total"),
+        "genres": item.get("genres") or [],
+        "imageURL": image_url,
+    }
 
 _token_cache: dict[str, object] = {
     "access_token": None,
@@ -70,8 +162,7 @@ async def suggestions(
     limit: int = 6,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    if SUGGESTIONS_API_KEY and x_api_key != SUGGESTIONS_API_KEY:
-        raise HTTPException(status_code=401, detail="unauthorized")
+    _require_api_key(x_api_key)
 
     q = (q or "").strip()
     if len(q) < 2:
@@ -111,3 +202,91 @@ async def suggestions(
         )
 
     return {"artists": artists}
+
+
+@app.post("/artist-ideas")
+async def artist_ideas(
+    payload: dict,
+    x_api_key: Optional[str] = Header(default=None),
+):
+    _require_api_key(x_api_key)
+
+    prompt = str((payload or {}).get("prompt") or "").strip()
+    if not prompt:
+        raise HTTPException(status_code=400, detail="missing_prompt")
+
+    try:
+        requested_count = int((payload or {}).get("artistCount") or 0)
+    except Exception:
+        requested_count = 0
+    safe_count = max(1, min(requested_count or 20, 30))
+
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=501, detail="gemini_not_configured")
+
+    system_instructions = (
+        "Return JSON only. No markdown. "
+        "Schema: {\"artists\": [\"Artist Name\", ...]}. "
+        "Provide exactly the requested number when possible."
+    )
+
+    gemini_body = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": system_instructions},
+                    {"text": f"Artist count: {safe_count}"},
+                    {"text": f"Prompt: {prompt}"},
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.8,
+            "maxOutputTokens": 1024,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        "gemini-flash-latest:generateContent"
+    )
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, params={"key": GEMINI_API_KEY}, json=gemini_body)
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"gemini_error: {resp.text}")
+
+    gemini_payload = resp.json() or {}
+    candidates = gemini_payload.get("candidates") or []
+    text = ""
+    if candidates:
+        content = (candidates[0] or {}).get("content") or {}
+        parts = content.get("parts") or []
+        if parts:
+            text = str((parts[0] or {}).get("text") or "")
+
+    parsed = _extract_json_object(text)
+    if parsed is None:
+        # Some responses may still not be strict JSON; try best-effort.
+        parsed = {"artists": text}
+
+    names = _sanitize_artist_names(parsed, limit=safe_count)
+
+    verified: list[dict] = []
+    seen_ids: set[str] = set()
+    for name in names:
+        summary = await _spotify_search_artist_summary(name)
+        if not summary:
+            continue
+        artist_id = str(summary.get("id") or "")
+        if not artist_id or artist_id in seen_ids:
+            continue
+        seen_ids.add(artist_id)
+        verified.append(summary)
+        if len(verified) >= safe_count:
+            break
+
+    return {"artists": verified}

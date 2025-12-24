@@ -112,6 +112,12 @@ enum L10n {
         static var suggestionsEmpty: String { localized("artist_input.suggestions_empty", "Empty state for artist suggestions") }
         static var suggestionsAuthRequired: String { localized("artist_input.suggestions_auth_required", "Message shown when Spotify authentication is required for suggestions") }
         static var suggestionsErrorGeneric: String { localized("artist_input.suggestions_error_generic", "Fallback message for artist suggestion failures") }
+        static var aiTitle: String { localized("artist_input.ai_title", "Title for AI prompt section") }
+        static var aiPromptPlaceholder: String { localized("artist_input.ai_prompt_placeholder", "Placeholder for AI prompt input") }
+        static var aiGenerateButton: String { localized("artist_input.ai_generate_button", "Generate button label for AI prompt") }
+        static var aiSuggestionsTitle: String { localized("artist_input.ai_suggestions_title", "Title for AI-generated artist list") }
+        static var aiSuggestionsEmpty: String { localized("artist_input.ai_suggestions_empty", "Empty state for AI-generated artist list") }
+        static var aiErrorGeneric: String { localized("artist_input.ai_error_generic", "Fallback error message for AI generation") }
         static func suggestionFollowers(_ formattedCount: String) -> String {
             String.localizedStringWithFormat(
                 localized("artist_input.suggestion_followers", "Followers detail for artist suggestion"),

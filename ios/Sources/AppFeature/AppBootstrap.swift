@@ -170,11 +170,20 @@ public struct RootView: View {
         }
     }
 
-    public init(dependencies: AppDependencies, artistSuggestionProvider: ArtistSuggestionProviding? = nil) {
+    public init(
+        dependencies: AppDependencies,
+        artistSuggestionProvider: ArtistSuggestionProviding? = nil,
+        artistIdeasProvider: ArtistIdeasProviding? = nil
+    ) {
         let suggestionProvider = artistSuggestionProvider ?? dependencies.apiClient
         _artistSuggestions = StateObject(wrappedValue: ArtistSuggestionViewModel(provider: suggestionProvider))
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
+
+        let resolvedIdeasProvider = artistIdeasProvider
+            ?? (artistSuggestionProvider as? ArtistIdeasProviding)
+            ?? (dependencies.apiClient as? ArtistIdeasProviding)
+        _artistIdeas = State(initialValue: resolvedIdeasProvider.map { ArtistIdeasViewModel(provider: $0) })
     }
 
 #if canImport(Security)
@@ -184,7 +193,8 @@ public struct RootView: View {
         configuration: SpotifyAPIConfiguration,
         keychainService: String = "autoplaylistbuilder.tokens",
         keychainAccount: String = "current-user",
-        artistSuggestionProvider: ArtistSuggestionProviding? = nil
+        artistSuggestionProvider: ArtistSuggestionProviding? = nil,
+        artistIdeasProvider: ArtistIdeasProviding? = nil
     ) {
         self.init(
             dependencies: .liveUsingKeychain(
@@ -192,7 +202,8 @@ public struct RootView: View {
                 service: keychainService,
                 account: keychainAccount
             ),
-            artistSuggestionProvider: artistSuggestionProvider
+            artistSuggestionProvider: artistSuggestionProvider,
+            artistIdeasProvider: artistIdeasProvider
         )
     }
 #endif
@@ -215,6 +226,7 @@ public struct RootView: View {
     @ObservedObject private var localization = LocalizationController.shared
     @ObservedObject private var appearance = AppearanceController.shared
     @StateObject private var artistSuggestions: ArtistSuggestionViewModel
+    @State private var artistIdeas: ArtistIdeasViewModel?
     @State private var suppressArtistSuggestionUpdate = false
 #if os(iOS)
     @State private var keyboardHeight: CGFloat = 0
@@ -465,6 +477,11 @@ public struct RootView: View {
             Text(L10n.Builder.manualArtistHint)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+
+            if let artistIdeas {
+                aiPromptSection(viewModel: artistIdeas)
+            }
+
             if shouldShowInlineArtistSuggestions && hasArtistSuggestions {
                 ArtistSuggestionsList(
                     suggestions: artistSuggestions.suggestions,
@@ -503,6 +520,67 @@ public struct RootView: View {
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: shadowColor, radius: 10, y: 4)
+    }
+
+    @ViewBuilder
+    private func aiPromptSection(viewModel: ArtistIdeasViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.ArtistInput.aiTitle)
+                .font(.caption.weight(.semibold))
+                .textCase(.uppercase)
+
+            ZStack(alignment: .topLeading) {
+                if viewModel.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(L10n.ArtistInput.aiPromptPlaceholder)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 18)
+                        .padding(.leading, 16)
+                        .allowsHitTesting(false)
+                }
+                TextEditor(text: Binding(
+                    get: { viewModel.prompt },
+                    set: { viewModel.prompt = $0 }
+                ))
+                .frame(minHeight: 80)
+                .padding(10)
+                .background(editorBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+
+            HStack {
+                Button(action: { viewModel.generate() }) {
+                    Label {
+                        Text(L10n.ArtistInput.aiGenerateButton)
+                    } icon: {
+                        Image(systemName: "sparkles")
+                    }
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .disabled(viewModel.isLoading || viewModel.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                if viewModel.isLoading {
+                    ProgressView().progressViewStyle(.circular)
+                }
+                Spacer()
+            }
+
+            if let error = viewModel.errorMessage, !error.isEmpty {
+                Text(error)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            ArtistSuggestionsList(
+                title: L10n.ArtistInput.aiSuggestionsTitle,
+                emptyMessage: L10n.ArtistInput.aiSuggestionsEmpty,
+                suggestions: viewModel.suggestions,
+                isLoading: viewModel.isLoading,
+                errorState: nil,
+                onSelect: insertArtistSuggestion
+            )
+            .transition(.opacity)
+        }
     }
 
     private var optionsCard: some View {
@@ -1130,6 +1208,8 @@ private struct UploadRowView: View {
 }
 
 private struct ArtistSuggestionsList: View {
+    let title: String
+    let emptyMessage: String
     let suggestions: [ArtistSuggestionViewModel.Suggestion]
     let isLoading: Bool
     let errorState: ArtistSuggestionViewModel.ErrorState?
@@ -1137,10 +1217,26 @@ private struct ArtistSuggestionsList: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    init(
+        title: String = L10n.ArtistInput.suggestionsTitle,
+        emptyMessage: String = L10n.ArtistInput.suggestionsEmpty,
+        suggestions: [ArtistSuggestionViewModel.Suggestion],
+        isLoading: Bool,
+        errorState: ArtistSuggestionViewModel.ErrorState?,
+        onSelect: @escaping (ArtistSuggestionViewModel.Suggestion) -> Void
+    ) {
+        self.title = title
+        self.emptyMessage = emptyMessage
+        self.suggestions = suggestions
+        self.isLoading = isLoading
+        self.errorState = errorState
+        self.onSelect = onSelect
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(L10n.ArtistInput.suggestionsTitle)
+                Text(title)
                     .font(.caption.weight(.semibold))
                     .textCase(.uppercase)
                 Spacer()
@@ -1161,7 +1257,7 @@ private struct ArtistSuggestionsList: View {
                         .multilineTextAlignment(.leading)
                 }
             } else if suggestions.isEmpty {
-                Text(L10n.ArtistInput.suggestionsEmpty)
+                Text(emptyMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {

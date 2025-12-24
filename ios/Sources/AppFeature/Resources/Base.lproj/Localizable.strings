@@ -66,3 +66,11 @@
 "artist_input.suggestions_auth_required" = "Sign in with Spotify to enable suggestions.";
 "artist_input.suggestions_error_generic" = "Could not load suggestions. Check your connection and try again.";
 "artist_input.suggestion_followers" = "%@ followers";
+
+/* AI artist generation */
+"artist_input.ai_title" = "Generate artists with AI";
+"artist_input.ai_prompt_placeholder" = "Describe the mood/vibe, task, genre, era, language, or similar artists…";
+"artist_input.ai_generate_button" = "Generate";
+"artist_input.ai_suggestions_title" = "AI suggestions";
+"artist_input.ai_suggestions_empty" = "Enter a prompt to generate artists.";
+"artist_input.ai_error_generic" = "Could not generate artists.";

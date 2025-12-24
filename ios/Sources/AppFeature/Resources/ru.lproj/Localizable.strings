@@ -66,3 +66,11 @@
 "artist_input.suggestions_auth_required" = "Войдите в Spotify, чтобы включить подсказки.";
 "artist_input.suggestions_error_generic" = "Не удалось загрузить подсказки. Проверьте подключение и повторите попытку.";
 "artist_input.suggestion_followers" = "%@ подписчиков";
+
+/* AI artist generation */
+"artist_input.ai_title" = "Сгенерировать исполнителей с помощью ИИ";
+"artist_input.ai_prompt_placeholder" = "Опишите настроение/вайб, задачу, жанр, годы, язык или похожих исполнителей…";
+"artist_input.ai_generate_button" = "Сгенерировать";
+"artist_input.ai_suggestions_title" = "Подсказки ИИ";
+"artist_input.ai_suggestions_empty" = "Введите промпт, чтобы получить список исполнителей.";
+"artist_input.ai_error_generic" = "Не удалось сгенерировать исполнителей.";

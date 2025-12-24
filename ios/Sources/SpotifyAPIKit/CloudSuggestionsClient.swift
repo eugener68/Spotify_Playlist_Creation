@@ -31,14 +31,7 @@ public struct CloudSuggestionsClient: ArtistSuggestionProviding, Sendable {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else { return [] }
 
-        var components = URLComponents(url: configuration.baseURL, resolvingAgainstBaseURL: false)
-        if components?.path.isEmpty == true {
-            components?.path = "/suggestions"
-        }
-        // If baseURL already contains a path, we keep it as-is.
-        if components?.path.isEmpty != false {
-            components?.path = "/suggestions"
-        }
+        var components = endpointComponents(endpointName: "suggestions")
 
         components?.queryItems = [
             URLQueryItem(name: "q", value: trimmed),
@@ -82,6 +75,97 @@ public struct CloudSuggestionsClient: ArtistSuggestionProviding, Sendable {
         } catch {
             throw SpotifyAPIError.transport(error)
         }
+    }
+}
+
+extension CloudSuggestionsClient: ArtistIdeasProviding {
+    public func generateArtistIdeas(prompt: String, artistCount: Int, userId: String?) async throws -> [ArtistSummary] {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        let components = endpointComponents(endpointName: "artist-ideas")
+        guard let url = components?.url else {
+            throw SpotifyAPIError.invalidURL
+        }
+
+        struct RequestBody: Encodable {
+            let prompt: String
+            let artistCount: Int
+            let userId: String?
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let apiKey = configuration.apiKey, !apiKey.isEmpty {
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        }
+
+        do {
+            let body = try JSONEncoder().encode(
+                RequestBody(
+                    prompt: trimmed,
+                    artistCount: artistCount,
+                    userId: userId
+                )
+            )
+            request.httpBody = body
+
+            let (data, response) = try await urlSession.data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw SpotifyAPIError.transport(URLError(.badServerResponse))
+            }
+            guard (200..<300).contains(httpResponse.statusCode) else {
+                if let bodyText = String(data: data, encoding: .utf8), !bodyText.isEmpty {
+                    throw SpotifyAPIError.api(status: httpResponse.statusCode, message: bodyText)
+                }
+                throw SpotifyAPIError.unexpectedStatus(httpResponse.statusCode)
+            }
+
+            let decoded = try decoder.decode(Response.self, from: data)
+            return decoded.artists.map {
+                ArtistSummary(
+                    id: $0.id,
+                    name: $0.name,
+                    followers: $0.followers,
+                    genres: $0.genres,
+                    imageURL: $0.imageURL
+                )
+            }
+        } catch let error as SpotifyAPIError {
+            throw error
+        } catch {
+            throw SpotifyAPIError.transport(error)
+        }
+    }
+}
+
+private extension CloudSuggestionsClient {
+    func endpointComponents(endpointName: String) -> URLComponents? {
+        var components = URLComponents(url: configuration.baseURL, resolvingAgainstBaseURL: false)
+        let endpoint = endpointName.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let currentPath = (components?.path ?? "")
+
+        if currentPath.isEmpty || currentPath == "/" {
+            components?.path = "/\(endpoint)"
+            return components
+        }
+
+        let pieces = currentPath.split(separator: "/").map(String.init)
+        guard !pieces.isEmpty else {
+            components?.path = "/\(endpoint)"
+            return components
+        }
+
+        var updated = pieces
+        if updated.last == "suggestions" || updated.last == "artist-ideas" {
+            updated[updated.count - 1] = endpoint
+        } else {
+            updated.append(endpoint)
+        }
+        components?.path = "/" + updated.joined(separator: "/")
+        return components
     }
 }
 
