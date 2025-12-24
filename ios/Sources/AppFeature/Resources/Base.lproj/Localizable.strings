@@ -75,3 +75,11 @@
 "artist_input.ai_suggestions_title" = "DJ AI suggestions";
 "artist_input.ai_suggestions_empty" = "Enter a prompt to generate artists.";
 "artist_input.ai_error_generic" = "Could not generate artists.";
+
+/* About */
+"about.title" = "About";
+"about.developer" = "Developer";
+"about.support" = "Support / Feedback";
+"about.contact_us" = "Contact Us";
+"about.version_build" = "Version";
+"about.copyright" = "Copyright";

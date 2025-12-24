@@ -75,3 +75,11 @@
 "artist_input.ai_suggestions_title" = "Подсказки Диджей ИИ";
 "artist_input.ai_suggestions_empty" = "Введите промпт, чтобы получить список исполнителей.";
 "artist_input.ai_error_generic" = "Не удалось сгенерировать исполнителей.";
+
+/* About */
+"about.title" = "О приложении";
+"about.developer" = "Разработчик";
+"about.support" = "Поддержка";
+"about.contact_us" = "Связаться";
+"about.version_build" = "Версия";
+"about.copyright" = "Авторские права";

@@ -220,6 +220,7 @@ public struct RootView: View {
     @State private var preferOriginalTracks: Bool = true
 
     @State private var isPresentingDJAI: Bool = false
+    @State private var isPresentingAbout: Bool = false
     @Environment(\.openURL) private var openURLAction
     @State private var dateStamp: Bool = true
     @State private var dryRun: Bool = true
@@ -363,9 +364,194 @@ public struct RootView: View {
         ScrollView {
             VStack(spacing: 18) {
                 optionsCard
+                Button(action: { isPresentingAbout = true }) {
+                    Text(L10n.About.title)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .sheet(isPresented: $isPresentingAbout) {
+                    NavigationStack {
+                        AboutView(
+                            developerName: aboutDeveloperName,
+                            developerProfileURL: aboutDeveloperProfileURL,
+                            supportURL: aboutSupportURL,
+                            versionBuild: aboutVersionBuild,
+                            copyright: aboutCopyright
+                        )
+                        .navigationTitle(L10n.About.title)
+                        .toolbar {
+#if os(iOS)
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button(action: { isPresentingAbout = false }) {
+                                    Image(systemName: "xmark")
+                                }
+                                .accessibilityLabel("Close")
+                            }
+#else
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(action: { isPresentingAbout = false }) {
+                                    Image(systemName: "xmark")
+                                }
+                                .accessibilityLabel("Close")
+                            }
+#endif
+                        }
+#if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+#endif
+                    }
+                }
             }
             .padding(.bottom)
         }
+    }
+
+    private struct AboutView: View {
+        let developerName: String?
+        let developerProfileURL: URL?
+        let supportURL: URL?
+        let versionBuild: String
+        let copyright: String?
+
+        @Environment(\.openURL) private var openURLAction
+
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let developerName {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.developerLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            if let developerProfileURL {
+                                Button(action: { openDeveloperProfile(url: developerProfileURL) }) {
+                                    Text(developerName)
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                }
+                            } else {
+                                Text(developerName)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+
+                    if let supportURL {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.supportLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            Link(L10n.About.contactUs, destination: supportURL)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(L10n.About.versionBuildLabel)
+                            .font(.subheadline)
+                        Spacer(minLength: 8)
+                        Text(versionBuild)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    if let copyright {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.copyrightLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            Text(copyright)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                }
+                .padding()
+            }
+        }
+
+        private func openDeveloperProfile(url: URL) {
+            let deepLink = appStoreDeepLinkIfPossible(from: url)
+            if let deepLink {
+                openURLAction(deepLink)
+                return
+            }
+            openURLAction(url)
+        }
+
+        private func appStoreDeepLinkIfPossible(from url: URL) -> URL? {
+            guard url.scheme == "https", url.host == "apps.apple.com" else {
+                return nil
+            }
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.scheme = "itms-apps"
+            guard let deepLink = components?.url else {
+                return nil
+            }
+
+#if os(iOS)
+            // Simulator often cannot open itms-apps links; only use it if the system says it can.
+            if UIApplication.shared.canOpenURL(deepLink) {
+                return deepLink
+            }
+            return nil
+#else
+            return deepLink
+#endif
+        }
+    }
+
+    private var aboutDeveloperName: String? {
+        bundleString(forInfoKey: "DeveloperName")
+    }
+
+    private var aboutDeveloperProfileURL: URL? {
+        guard let urlString = bundleString(forInfoKey: "DeveloperProfileURL")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              let url = URL(string: urlString)
+        else {
+            return nil
+        }
+        return url
+    }
+
+    private var aboutSupportURL: URL? {
+        guard let urlString = bundleString(forInfoKey: "SupportURL")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              let url = URL(string: urlString)
+        else {
+            return nil
+        }
+        return url
+    }
+
+    private var aboutCopyright: String? {
+        bundleString(forInfoKey: "NSHumanReadableCopyright")
+    }
+
+    private var aboutVersionBuild: String {
+        let version = bundleString(forInfoKey: "CFBundleShortVersionString") ?? ""
+        let build = bundleString(forInfoKey: "CFBundleVersion") ?? ""
+
+        switch (version.isEmpty, build.isEmpty) {
+        case (false, false):
+            return "\(version) (\(build))"
+        case (false, true):
+            return version
+        case (true, false):
+            return build
+        default:
+            return "—"
+        }
+    }
+
+    private func bundleString(forInfoKey key: String) -> String? {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String
     }
 
     private var resultsCard: some View {

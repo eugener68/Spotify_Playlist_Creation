@@ -23,6 +23,14 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>2.0</string>
+	<key>DeveloperName</key>
+	<string>EugeneR</string>
+	<key>DeveloperProfileURL</key>
+	<string>https://apps.apple.com/us/developer/eugene-roitberg/id1822179619</string>
+	<key>SupportURL</key>
+	<string>https://support.eventhostcompanion.app/feedback-form.html</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2025 EugeneR</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,7 +43,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>2025.12.24.01</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

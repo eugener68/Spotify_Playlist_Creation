@@ -127,6 +127,15 @@ enum L10n {
         }
     }
 
+    enum About {
+        static var title: String { localized("about.title", "Title for the about section") }
+        static var developerLabel: String { localized("about.developer", "Developer label") }
+        static var copyrightLabel: String { localized("about.copyright", "Copyright label") }
+        static var supportLabel: String { localized("about.support", "Support/feedback label") }
+        static var contactUs: String { localized("about.contact_us", "Contact us link text") }
+        static var versionBuildLabel: String { localized("about.version_build", "Version/build label") }
+    }
+
     private static func localized(_ key: String, _ comment: String) -> String {
         LocalizationController.shared.localizedString(forKey: key, comment: comment)
     }
