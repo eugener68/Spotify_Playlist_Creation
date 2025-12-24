@@ -530,12 +530,17 @@ private extension PlaylistBuilder {
         var previousKey: String?
 
         while !buckets.isEmpty {
-            var candidates = buckets.enumerated().filter { $0.element.key != previousKey }
-            if candidates.isEmpty {
-                candidates = Array(buckets.enumerated())
+            // Prefer spreading artists by always selecting from the bucket with the most remaining tracks,
+            // only repeating the previous artist when it is unavoidable.
+            let ranked: [(index: Int, remaining: Int, tieBreak: UInt64)] = buckets.indices.map { index in
+                (index: index, remaining: buckets[index].tracks.count, tieBreak: generator.next())
             }
-            let randomIndex = Int(generator.next() % UInt64(max(candidates.count, 1)))
-            let bucketPosition = candidates[randomIndex].offset
+            let sorted = ranked.sorted { a, b in
+                if a.remaining != b.remaining { return a.remaining > b.remaining }
+                return a.tieBreak < b.tieBreak
+            }
+
+            let bucketPosition = sorted.first(where: { buckets[$0.index].key != previousKey })?.index ?? sorted[0].index
             var bucket = buckets[bucketPosition]
             if let nextTrack = bucket.tracks.popLast() {
                 ordered.append(nextTrack)

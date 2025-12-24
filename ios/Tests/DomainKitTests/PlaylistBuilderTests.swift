@@ -53,20 +53,20 @@ final class PlaylistBuilderTests: XCTestCase {
 
         XCTAssertEqual(result.playlistName, "Road Trip Mix 2025-11-20")
         XCTAssertEqual(result.preparedTrackURIs, [
-            "spotify:track:m1",
-            "spotify:track:m2",
-            "spotify:track:m3",
             "spotify:track:aha1",
+            "spotify:track:m3",
+            "spotify:track:aha3",
+            "spotify:track:m2",
             "spotify:track:aha2",
-            "spotify:track:aha3"
+            "spotify:track:m1"
         ])
         XCTAssertEqual(result.addedTrackURIs, result.preparedTrackURIs)
         XCTAssertEqual(result.stats.totalPrepared, 6)
         XCTAssertEqual(result.stats.artistsRetrieved, 2)
         XCTAssertEqual(result.stats.topTracksRetrieved, 6)
         XCTAssertEqual(result.stats.totalUploaded, 0)
-        XCTAssertEqual(result.displayTracks.first, "Metallica – Master of Puppets")
-        XCTAssertEqual(result.displayTracks.last, "A-ha – Cry Wolf")
+        XCTAssertEqual(result.displayTracks.first, "A-ha – Take On Me")
+        XCTAssertEqual(result.displayTracks.last, "Metallica – Master of Puppets")
         XCTAssertEqual(result.finalUploadURIs, result.preparedTrackURIs)
     }
 

@@ -25,7 +25,7 @@
 "builder.limit_per_artist_title" = "Limit Per Artist";
 "builder.limit_per_artist_subtitle" = "Number of top tracks to fetch per artist. Max is 10.";
 "builder.max_tracks_title" = "Max Tracks";
-"builder.max_tracks_subtitle" = "Cap the total tracks before upload. Max is 100.";
+"builder.max_tracks_subtitle" = "Cap the total tracks before upload. Max is 250.";
 "builder.shuffle_title" = "Shuffle Results";
 "builder.shuffle_subtitle" = "Randomize order using a deterministic seed.";
 "builder.prefer_original_title" = "Prefer Original Versions";

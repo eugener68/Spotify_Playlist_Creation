@@ -23,6 +23,19 @@ enum AppConfiguration {
     /// under that refresh token instead of the signed-in user's token.
     static var artistSuggestionProvider: ArtistSuggestionProviding? {
         let secrets = loadSecrets()
+
+        // Preferred: use a backend (e.g. Cloud Run) so no Spotify secrets/tokens ship in the app.
+        if let backendURLString = secrets.suggestionsBackendURL,
+           let backendURL = URL(string: backendURLString),
+           !backendURLString.isEmpty {
+            return CloudSuggestionsClient(
+                configuration: .init(
+                    baseURL: backendURL,
+                    apiKey: secrets.suggestionsBackendAPIKey
+                )
+            )
+        }
+
         guard let refreshToken = secrets.suggestionsRefreshToken, !refreshToken.isEmpty else {
             return nil
         }
@@ -59,12 +72,16 @@ enum AppConfiguration {
         let redirectURI: String
         let scopes: [String]
         let suggestionsRefreshToken: String?
+        let suggestionsBackendURL: String?
+        let suggestionsBackendAPIKey: String?
 
         enum CodingKeys: String, CodingKey {
             case clientID = "client_id"
             case redirectURI = "redirect_uri"
             case scopes
             case suggestionsRefreshToken = "suggestions_refresh_token"
+            case suggestionsBackendURL = "suggestions_backend_url"
+            case suggestionsBackendAPIKey = "suggestions_backend_api_key"
         }
     }
 }

@@ -202,8 +202,8 @@ public struct RootView: View {
     @State private var playlistName: String = L10n.Builder.defaultPlaylistName
     @State private var lastDefaultPlaylistName: String = L10n.Builder.defaultPlaylistName
     @State private var manualArtists: String = "Metallica, A-ha"
-    @State private var limitPerArtist: Int = 3
-    @State private var maxTracks: Int = 10
+    @State private var limitPerArtist: Int = 5
+    @State private var maxTracks: Int = 25
     @State private var shuffle: Bool = true
     @State private var preferOriginalTracks: Bool = true
     @Environment(\.openURL) private var openURLAction
@@ -528,7 +528,7 @@ public struct RootView: View {
                 title: L10n.Builder.maxTracksTitle,
                 subtitle: L10n.Builder.maxTracksSubtitle,
                 value: $maxTracks,
-                bounds: 1...100
+                bounds: 1...250
             )
             OptionToggleRow(
                 title: L10n.Builder.shuffleTitle,

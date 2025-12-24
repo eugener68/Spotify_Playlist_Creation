@@ -102,7 +102,7 @@ public final class SpotifyAPIClient: @unchecked Sendable {
 
     /// Set to true to print request/response details for troubleshooting.
     /// Kept internal to avoid changing the public API surface.
-    static var debugLoggingEnabled: Bool = true
+    static var debugLoggingEnabled: Bool = false
 
     public init(
         configuration: SpotifyAPIConfiguration,

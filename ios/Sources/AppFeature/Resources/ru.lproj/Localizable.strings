@@ -25,7 +25,7 @@
 "builder.limit_per_artist_title" = "Треков на исполнителя";
 "builder.limit_per_artist_subtitle" = "Сколько треков на каждого исполнителя. Максимум 10.";
 "builder.max_tracks_title" = "Всего треков в плейлисте";
-"builder.max_tracks_subtitle" = "Максимальное количество треков 100.";
+"builder.max_tracks_subtitle" = "Максимальное количество треков 250.";
 "builder.shuffle_title" = "Перемешать треки";
 "builder.shuffle_subtitle" = "Смешанный порядок исполнения треков";
 "builder.prefer_original_title" = "Предпочитать оригинальные версии";

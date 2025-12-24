@@ -27,10 +27,19 @@ public actor RefreshTokenAccessTokenProvider: SpotifyAccessTokenProviding {
         if let cached = cachedToken, !cached.willExpire(within: refreshTolerance) {
             return cached.accessToken
         }
-        let response = try await refresher.refreshAccessToken(refreshToken: refreshToken)
-        let newSet = SpotifyTokenSet(response: response, fallbackRefreshToken: refreshToken)
-        cachedToken = newSet
-        return newSet.accessToken
+        do {
+            let response = try await refresher.refreshAccessToken(refreshToken: refreshToken)
+            let newSet = SpotifyTokenSet(response: response, fallbackRefreshToken: refreshToken)
+            cachedToken = newSet
+            return newSet.accessToken
+        } catch let error as SpotifyAPIError {
+            cachedToken = nil
+            let base = "Shared suggestions token is invalid, revoked, or mismatched with this client_id. Regenerate suggestions_refresh_token and rebuild the app."
+            if case let .api(status, message) = error {
+                throw SpotifyAPIError.api(status: status, message: "\(base) (\(message))")
+            }
+            throw SpotifyAPIError.api(status: 401, message: base)
+        }
     }
 
     public func clearCache() {
