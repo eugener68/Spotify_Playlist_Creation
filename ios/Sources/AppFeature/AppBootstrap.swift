@@ -315,6 +315,10 @@ public struct RootView: View {
             withAnimation(.easeOut(duration: duration)) {
                 keyboardHeight = 0
             }
+            // When the keyboard hides, consider manual artist editing finished.
+            // This avoids leaving the suggestion overlay covering the build button.
+            isManualArtistsFocused = false
+            artistSuggestions.clear()
         }
 #endif
     }
@@ -504,7 +508,9 @@ public struct RootView: View {
                                 viewModel: artistIdeas,
                                 manualArtists: $manualArtists,
                                 onSelect: insertArtistSuggestionFromDJAI,
-                                onAddAll: addAllArtistSuggestionsFromDJAI
+                                onAddAll: addAllArtistSuggestionsFromDJAI,
+                                onManualArtistsChange: handleManualArtistInputChange,
+                                onDismissSpotifySuggestions: { artistSuggestions.clear() }
                             )
                                 .navigationTitle(L10n.ArtistInput.aiTitle)
                                 .toolbar {
@@ -577,6 +583,10 @@ public struct RootView: View {
         @Binding var manualArtists: String
         let onSelect: (ArtistSuggestionViewModel.Suggestion) -> Void
         let onAddAll: ([ArtistSuggestionViewModel.Suggestion]) -> Void
+        let onManualArtistsChange: (String) -> Void
+        let onDismissSpotifySuggestions: () -> Void
+
+        @FocusState private var isManualArtistsFocused: Bool
 
         var body: some View {
             ScrollView {
@@ -612,6 +622,13 @@ public struct RootView: View {
                     .buttonStyle(AccentButtonStyle())
                     .disabled(viewModel.isLoading || viewModel.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
+                    // Clearing the prompt should also clear prior results.
+                    .onChange(of: viewModel.prompt) { newValue in
+                        if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            viewModel.clear()
+                        }
+                    }
+
                     if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(.circular)
@@ -643,6 +660,7 @@ public struct RootView: View {
                         .font(.headline)
 
                     TextEditor(text: $manualArtists)
+                        .focused($isManualArtistsFocused)
                         .frame(minHeight: 120)
                         .padding(10)
                         .background(Color.black.opacity(0.0001))
@@ -651,6 +669,12 @@ public struct RootView: View {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                         )
+                        .onChange(of: manualArtists, perform: onManualArtistsChange)
+                        .onChange(of: isManualArtistsFocused) { focused in
+                            if !focused {
+                                onDismissSpotifySuggestions()
+                            }
+                        }
 
                     Text(L10n.Builder.manualArtistHint)
                         .font(.footnote)
