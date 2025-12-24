@@ -22,9 +22,9 @@ public struct PlaylistOptions: Codable, Equatable, Sendable {
     public init(
         playlistName: String = "Untitled Playlist",
         dateStamp: Bool = true,
-        limitPerArtist: Int = 10,
-        maxArtists: Int = 20,
-        maxTracks: Int = 200,
+        limitPerArtist: Int = 5,
+        maxArtists: Int = 25,
+        maxTracks: Int = 100,
         shuffle: Bool = true,
         shuffleSeed: Int? = nil,
         dedupeVariants: Bool = true,

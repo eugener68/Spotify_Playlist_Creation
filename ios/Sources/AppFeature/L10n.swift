@@ -115,6 +115,7 @@ enum L10n {
         static var aiTitle: String { localized("artist_input.ai_title", "Title for AI prompt section") }
         static var aiPromptPlaceholder: String { localized("artist_input.ai_prompt_placeholder", "Placeholder for AI prompt input") }
         static var aiGenerateButton: String { localized("artist_input.ai_generate_button", "Generate button label for AI prompt") }
+        static var aiAddAllButton: String { localized("artist_input.ai_add_all_button", "Button to add all AI suggestions into the manual artist list") }
         static var aiSuggestionsTitle: String { localized("artist_input.ai_suggestions_title", "Title for AI-generated artist list") }
         static var aiSuggestionsEmpty: String { localized("artist_input.ai_suggestions_empty", "Empty state for AI-generated artist list") }
         static var aiErrorGeneric: String { localized("artist_input.ai_error_generic", "Fallback error message for AI generation") }

@@ -18,7 +18,7 @@
 "builder.date_stamp_toggle" = "Date stamp name";
 "builder.dry_run_toggle" = "Dry run";
 "builder.manual_artist_list_title" = "Manual Artist List";
-"builder.manual_artist_hint" = "Separate artists with commas or new lines. Demo data ships with Metallica and A-ha";
+"builder.manual_artist_hint" = "Separate artists with commas or new lines.";
 "builder.import_csv_button" = "Import Artist List CSV/Text";
 "builder.paste_button" = "Paste Artist List";
 "builder.settings_title" = "Settings";
@@ -68,9 +68,10 @@
 "artist_input.suggestion_followers" = "%@ followers";
 
 /* AI artist generation */
-"artist_input.ai_title" = "Generate artists with AI";
-"artist_input.ai_prompt_placeholder" = "Describe the mood/vibe, task, genre, era, language, or similar artists…";
-"artist_input.ai_generate_button" = "Generate";
-"artist_input.ai_suggestions_title" = "AI suggestions";
+"artist_input.ai_title" = "DJ AI";
+"artist_input.ai_prompt_placeholder" = "Describe the mood/vibe, task, genre, era, language, or similar artists…\n\nExample: focus music, minimal lyrics, electronic, 2010s–present";
+"artist_input.ai_generate_button" = "Ask DJ AI";
+"artist_input.ai_add_all_button" = "Add all to artist list";
+"artist_input.ai_suggestions_title" = "DJ AI suggestions";
 "artist_input.ai_suggestions_empty" = "Enter a prompt to generate artists.";
 "artist_input.ai_error_generic" = "Could not generate artists.";

@@ -18,7 +18,7 @@
 "builder.date_stamp_toggle" = "Добавить дату в название";
 "builder.dry_run_toggle" = "Пробный запуск";
 "builder.manual_artist_list_title" = "Список исполнителей вручную";
-"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки. В демо-данных уже есть Metallica и A-ha.";
+"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки.";
 "builder.import_csv_button" = "Импортировать список исполнителей (CSV/текст)";
 "builder.paste_button" = "Вставить список исполнителей";
 "builder.settings_title" = "Настройки";
@@ -68,9 +68,10 @@
 "artist_input.suggestion_followers" = "%@ подписчиков";
 
 /* AI artist generation */
-"artist_input.ai_title" = "Сгенерировать исполнителей с помощью ИИ";
-"artist_input.ai_prompt_placeholder" = "Опишите настроение/вайб, задачу, жанр, годы, язык или похожих исполнителей…";
-"artist_input.ai_generate_button" = "Сгенерировать";
-"artist_input.ai_suggestions_title" = "Подсказки ИИ";
+"artist_input.ai_title" = "Диджей ИИ";
+"artist_input.ai_prompt_placeholder" = "Опишите настроение/вайб, задачу, жанр, годы, язык или похожих исполнителей…\n\nПример: музыка для фокуса, минимум слов, электронная, 2010-е — сейчас";
+"artist_input.ai_generate_button" = "Спросить Диджея ИИ";
+"artist_input.ai_add_all_button" = "Добавить всех в список";
+"artist_input.ai_suggestions_title" = "Подсказки Диджей ИИ";
 "artist_input.ai_suggestions_empty" = "Введите промпт, чтобы получить список исполнителей.";
 "artist_input.ai_error_generic" = "Не удалось сгенерировать исполнителей.";
