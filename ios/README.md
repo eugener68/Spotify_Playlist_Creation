@@ -60,3 +60,25 @@ The `App/AutoPlaylistBuilderApp` directory contains a ready-to-run SwiftUI app t
 - Copy `App/AutoPlaylistBuilderApp/AutoPlaylistBuilderApp/Resources/AppSecrets.example.plist` to `AppSecrets.plist`, then fill in your Spotify Client ID, redirect URI, and scopes. The example file stays in the bundle for previews; the real secrets file is ignored via `.gitignore`.
 - Update `Info.plist` (URL types) so the redirect scheme matches the one registered on the Spotify dashboard.
 - The `RootView(configuration:keychainService:keychainAccount:)` convenience initializer is used inside `AutoPlaylistBuilderApp.swift`, so tokens persist automatically via the Keychain-backed dependency wiring.
+
+## DJ AI Subscription + Lifetime (StoreKit 2)
+
+The DJ AI feature (artist ideas generation) is gated behind StoreKit 2 purchases:
+
+- **Auto-renewable subscription** (weekly / monthly / yearly) in a single subscription group.
+- **Lifetime** as a **non-consumable** IAP that unlocks DJ AI permanently.
+
+The app expects product identifiers with this default pattern (based on your bundle identifier):
+
+- `$(BUNDLE_ID).dj.ai.weekly`
+- `$(BUNDLE_ID).dj.ai.monthly`
+- `$(BUNDLE_ID).dj.ai.yearly`
+- `$(BUNDLE_ID).dj.ai.lifetime`
+
+Optionally, you can also configure a limited-time founders SKU:
+
+- `$(BUNDLE_ID).dj.ai.founders.lifetime`
+
+The app will **stop showing** the founders SKU after **12/31/2026**, or after the user has **started a trial** or **purchased any DJ AI subscription**.
+
+The **7-day free trial** is configured as an **Introductory Offer** on the subscription products in App Store Connect (not hard-coded in the app).

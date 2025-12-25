@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		4443DC7C2ED5170100ADADF8 /* AppSecrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4443DC7B2ED5170100ADADF8 /* AppSecrets.plist */; };
 		4443DC7F2EDFCDE000ADADF8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 4443DC7E2EDFCDE000ADADF8 /* LaunchScreen.storyboard */; };
+		4478B4D72EFCF7EE00C365F8 /* DJAI.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 4478B4D62EFCF7EE00C365F8 /* DJAI.storekit */; };
 		448445FF2EFA67A500E61F56 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 58C4C4BB2C1B51A400E37A9E /* Assets.xcassets */; };
 		448446012EFAF44900E61F56 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 448446002EFAF44900E61F56 /* AppIcon.icon */; };
 		58C4C4C12C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58C4C4B92C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift */; };
@@ -22,6 +23,7 @@
 		4443DC7B2ED5170100ADADF8 /* AppSecrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = AppSecrets.plist; sourceTree = "<group>"; };
 		4443DC7D2EDFCDE000ADADF8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		4443DC812EDFCE2700ADADF8 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/LaunchScreen.strings; sourceTree = "<group>"; };
+		4478B4D62EFCF7EE00C365F8 /* DJAI.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = DJAI.storekit; sourceTree = "<group>"; };
 		448446002EFAF44900E61F56 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		58C4C4B32C1B51A400E37A9E /* AutoPlaylistBuilderApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AutoPlaylistBuilderApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		58C4C4B92C1B51A400E37A9E /* AutoPlaylistBuilderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoPlaylistBuilderApp.swift; sourceTree = "<group>"; };
@@ -49,6 +51,7 @@
 		58C4C4A62C1B51A400E37A9E = {
 			isa = PBXGroup;
 			children = (
+				4478B4D62EFCF7EE00C365F8 /* DJAI.storekit */,
 				58C4C4B62C1B51A400E37A9E /* AutoPlaylistBuilderApp */,
 				58C4C4B42C1B51A400E37A9E /* Products */,
 				58C4C4B52C1B51A400E37A9E /* Frameworks */,
@@ -181,6 +184,7 @@
 				58C4C4C42C1B51A400E37A9E /* AppSecrets.example.plist in Resources */,
 				4443DC7C2ED5170100ADADF8 /* AppSecrets.plist in Resources */,
 				58D86C1C2F1A6E2E00A1D4B0 /* InfoPlist.strings in Resources */,
+				4478B4D72EFCF7EE00C365F8 /* DJAI.storekit in Resources */,
 				448446012EFAF44900E61F56 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

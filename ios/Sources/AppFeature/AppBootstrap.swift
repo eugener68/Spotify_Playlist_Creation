@@ -231,6 +231,7 @@ public struct RootView: View {
     @ObservedObject private var appearance = AppearanceController.shared
     @StateObject private var artistSuggestions: ArtistSuggestionViewModel
     @State private var artistIdeas: ArtistIdeasViewModel?
+    @StateObject private var djAIStore = DJAIStore()
     @State private var suppressArtistSuggestionUpdate = false
 #if os(iOS)
     @State private var keyboardHeight: CGFloat = 0
@@ -289,6 +290,7 @@ public struct RootView: View {
         .task {
             await authViewModel.ensureStatusLoaded()
             updateActiveStepForAuth()
+            await djAIStore.refreshEntitlements()
         }
         .fileImporter(
             isPresented: $isImportingArtists,
@@ -688,7 +690,7 @@ public struct RootView: View {
                 }
                 .buttonStyle(SecondaryButtonStyle())
                 .sheet(isPresented: $isPresentingDJAI) {
-                    if let artistIdeas {
+                    if djAIStore.hasAccess, let artistIdeas {
                         NavigationStack {
                             DJAIView(
                                 viewModel: artistIdeas,
@@ -698,28 +700,30 @@ public struct RootView: View {
                                 onManualArtistsChange: handleManualArtistInputChange,
                                 onDismissSpotifySuggestions: { artistSuggestions.clear() }
                             )
-                                .navigationTitle(L10n.ArtistInput.aiTitle)
-                                .toolbar {
+                            .navigationTitle(L10n.ArtistInput.aiTitle)
+                            .toolbar {
 #if os(iOS)
-                                    ToolbarItem(placement: .topBarTrailing) {
-                                        Button(action: { isPresentingDJAI = false }) {
-                                            Image(systemName: "xmark")
-                                        }
-                                        .accessibilityLabel("Close")
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button(action: { isPresentingDJAI = false }) {
+                                        Image(systemName: "xmark")
                                     }
-#else
-                                    ToolbarItem(placement: .cancellationAction) {
-                                        Button(action: { isPresentingDJAI = false }) {
-                                            Image(systemName: "xmark")
-                                        }
-                                        .accessibilityLabel("Close")
-                                    }
-#endif
+                                    .accessibilityLabel("Close")
                                 }
+#else
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button(action: { isPresentingDJAI = false }) {
+                                        Image(systemName: "xmark")
+                                    }
+                                    .accessibilityLabel("Close")
+                                }
+#endif
+                            }
 #if os(iOS)
-                                .navigationBarTitleDisplayMode(.inline)
+                            .navigationBarTitleDisplayMode(.inline)
 #endif
                         }
+                    } else {
+                        DJAIPaywallView(store: djAIStore, onClose: { isPresentingDJAI = false })
                     }
                 }
             }
@@ -1729,7 +1733,7 @@ private struct FlowStepSelector: View {
     }
 }
 
-private struct AccentButtonStyle: ButtonStyle {
+struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
@@ -1745,7 +1749,7 @@ private struct AccentButtonStyle: ButtonStyle {
     }
 }
 
-private struct SecondaryButtonStyle: ButtonStyle {
+struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {

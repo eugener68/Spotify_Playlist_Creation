@@ -76,6 +76,29 @@
 "artist_input.ai_suggestions_empty" = "Введите промпт, чтобы получить список исполнителей.";
 "artist_input.ai_error_generic" = "Не удалось сгенерировать исполнителей.";
 
+/* DJ AI paywall */
+"djai.paywall_title" = "Открыть Диджей ИИ";
+"djai.paywall_subtitle" = "Доступны бесплатные пробные периоды (длительность зависит от плана), затем выберите план. Можно отменить в любое время.";
+"djai.paywall_lifetime_header" = "Навсегда";
+"djai.paywall_lifetime_detail" = "Разовая покупка. Открывает функцию Диджей ИИ.";
+"djai.paywall_restore" = "Восстановить покупки";
+"djai.paywall_manage" = "Управление подписками";
+"djai.paywall_no_plans" = "Планы сейчас недоступны. Проверьте интернет, идентификаторы продуктов и статус в App Store Connect.";
+"djai.paywall_disclaimer" = "Подписка продлевается автоматически, если её не отменить минимум за 24 часа до конца текущего периода.";
+"djai.paywall_trial_hint" = "Включает пробный период (длительность зависит от плана)";
+"djai.paywall_cancel_anytime" = "Отмена в любое время";
+"djai.paywall_close" = "Закрыть";
+
+"djai.status_locked" = "Статус: Закрыто";
+"djai.status_subscribed" = "Статус: Подписка активна";
+"djai.status_lifetime" = "Статус: Доступ навсегда";
+
+"djai.plan_weekly" = "Диджей ИИ — Недельная";
+"djai.plan_monthly" = "Диджей ИИ — Месячная";
+"djai.plan_yearly" = "Диджей ИИ — Годовая";
+"djai.plan_lifetime" = "Диджей ИИ — Навсегда";
+"djai.plan_founders_lifetime" = "Диджей ИИ — Для первых покупателей";
+
 /* About */
 "about.title" = "О приложении";
 "about.developer" = "Разработчик";
