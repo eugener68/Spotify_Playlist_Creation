@@ -112,12 +112,52 @@ enum L10n {
         static var suggestionsEmpty: String { localized("artist_input.suggestions_empty", "Empty state for artist suggestions") }
         static var suggestionsAuthRequired: String { localized("artist_input.suggestions_auth_required", "Message shown when Spotify authentication is required for suggestions") }
         static var suggestionsErrorGeneric: String { localized("artist_input.suggestions_error_generic", "Fallback message for artist suggestion failures") }
+        static var aiTitle: String { localized("artist_input.ai_title", "Title for AI prompt section") }
+        static var aiPromptPlaceholder: String { localized("artist_input.ai_prompt_placeholder", "Placeholder for AI prompt input") }
+        static var aiGenerateButton: String { localized("artist_input.ai_generate_button", "Generate button label for AI prompt") }
+        static var aiAddAllButton: String { localized("artist_input.ai_add_all_button", "Button to add all AI suggestions into the manual artist list") }
+        static var aiSuggestionsTitle: String { localized("artist_input.ai_suggestions_title", "Title for AI-generated artist list") }
+        static var aiSuggestionsEmpty: String { localized("artist_input.ai_suggestions_empty", "Empty state for AI-generated artist list") }
+        static var aiErrorGeneric: String { localized("artist_input.ai_error_generic", "Fallback error message for AI generation") }
         static func suggestionFollowers(_ formattedCount: String) -> String {
             String.localizedStringWithFormat(
                 localized("artist_input.suggestion_followers", "Followers detail for artist suggestion"),
                 formattedCount
             )
         }
+    }
+
+    enum About {
+        static var title: String { localized("about.title", "Title for the about section") }
+        static var developerLabel: String { localized("about.developer", "Developer label") }
+        static var copyrightLabel: String { localized("about.copyright", "Copyright label") }
+        static var supportLabel: String { localized("about.support", "Support/feedback label") }
+        static var contactUs: String { localized("about.contact_us", "Contact us link text") }
+        static var versionBuildLabel: String { localized("about.version_build", "Version/build label") }
+    }
+
+    enum DJAI {
+        static var paywallTitle: String { localized("djai.paywall_title", "DJ AI paywall title") }
+        static var paywallSubtitle: String { localized("djai.paywall_subtitle", "DJ AI paywall subtitle") }
+        static var paywallLifetimeHeader: String { localized("djai.paywall_lifetime_header", "Header for lifetime option") }
+        static var paywallLifetimeDetail: String { localized("djai.paywall_lifetime_detail", "Detail text for lifetime option") }
+        static var paywallRestore: String { localized("djai.paywall_restore", "Restore purchases button") }
+        static var paywallManage: String { localized("djai.paywall_manage", "Manage subscriptions button") }
+        static var paywallNoPlans: String { localized("djai.paywall_no_plans", "Message shown when products fail to load") }
+        static var paywallDisclaimer: String { localized("djai.paywall_disclaimer", "Subscription disclaimer") }
+        static var paywallTrialHint: String { localized("djai.paywall_trial_hint", "Hint when intro trial exists") }
+        static var paywallCancelAnytime: String { localized("djai.paywall_cancel_anytime", "Cancel anytime hint") }
+        static var paywallClose: String { localized("djai.paywall_close", "Close label for paywall") }
+
+        static var statusLocked: String { localized("djai.status_locked", "Status text when DJ AI is locked") }
+        static var statusSubscribed: String { localized("djai.status_subscribed", "Status text when DJ AI is unlocked via subscription") }
+        static var statusLifetime: String { localized("djai.status_lifetime", "Status text when DJ AI is unlocked via lifetime purchase") }
+
+        static var planWeekly: String { localized("djai.plan_weekly", "Title for weekly subscription plan") }
+        static var planMonthly: String { localized("djai.plan_monthly", "Title for monthly subscription plan") }
+        static var planYearly: String { localized("djai.plan_yearly", "Title for yearly subscription plan") }
+        static var planLifetime: String { localized("djai.plan_lifetime", "Title for standard lifetime plan") }
+        static var planFoundersLifetime: String { localized("djai.plan_founders_lifetime", "Title for founders lifetime plan") }
     }
 
     private static func localized(_ key: String, _ comment: String) -> String {

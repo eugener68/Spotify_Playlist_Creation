@@ -18,7 +18,7 @@
 "builder.date_stamp_toggle" = "Date stamp name";
 "builder.dry_run_toggle" = "Dry run";
 "builder.manual_artist_list_title" = "Manual Artist List";
-"builder.manual_artist_hint" = "Separate artists with commas or new lines. Demo data ships with Metallica and A-ha";
+"builder.manual_artist_hint" = "Separate artists with commas or new lines.";
 "builder.import_csv_button" = "Import Artist List CSV/Text";
 "builder.paste_button" = "Paste Artist List";
 "builder.settings_title" = "Settings";
@@ -66,3 +66,43 @@
 "artist_input.suggestions_auth_required" = "Sign in with Spotify to enable suggestions.";
 "artist_input.suggestions_error_generic" = "Could not load suggestions. Check your connection and try again.";
 "artist_input.suggestion_followers" = "%@ followers";
+
+/* AI artist generation */
+"artist_input.ai_title" = "DJ AI";
+"artist_input.ai_prompt_placeholder" = "Describe the mood/vibe, task, genre, era, language, or similar artists…\n\nExample: focus music, minimal lyrics, electronic, 2010s–present";
+"artist_input.ai_generate_button" = "Ask DJ AI";
+"artist_input.ai_add_all_button" = "Add all to artist list";
+"artist_input.ai_suggestions_title" = "DJ AI suggestions";
+"artist_input.ai_suggestions_empty" = "Enter a prompt to generate artists.";
+"artist_input.ai_error_generic" = "Could not generate artists.";
+
+/* DJ AI paywall */
+"djai.paywall_title" = "Unlock DJ AI";
+"djai.paywall_subtitle" = "Free trial periods available (duration depends on plan), then choose a plan. Cancel anytime.";
+"djai.paywall_lifetime_header" = "Lifetime";
+"djai.paywall_lifetime_detail" = "One-time purchase. Unlocks DJ AI feature.";
+"djai.paywall_restore" = "Restore purchases";
+"djai.paywall_manage" = "Manage subscriptions";
+"djai.paywall_no_plans" = "Plans are unavailable right now. Check your internet connection, product IDs, and App Store Connect status.";
+"djai.paywall_disclaimer" = "Subscriptions renew automatically unless canceled at least 24 hours before the end of the current period.";
+"djai.paywall_trial_hint" = "Includes free trial (duration depends on plan)";
+"djai.paywall_cancel_anytime" = "Cancel anytime";
+"djai.paywall_close" = "Close";
+
+"djai.status_locked" = "Status: Locked";
+"djai.status_subscribed" = "Status: Active subscription";
+"djai.status_lifetime" = "Status: Lifetime access";
+
+"djai.plan_weekly" = "DJ AI — Weekly";
+"djai.plan_monthly" = "DJ AI — Monthly";
+"djai.plan_yearly" = "DJ AI — Yearly";
+"djai.plan_lifetime" = "DJ AI — Lifetime";
+"djai.plan_founders_lifetime" = "DJ AI — Founders Lifetime";
+
+/* About */
+"about.title" = "About";
+"about.developer" = "Developer";
+"about.support" = "Support / Feedback";
+"about.contact_us" = "Contact Us";
+"about.version_build" = "Version";
+"about.copyright" = "Copyright";

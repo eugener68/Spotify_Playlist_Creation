@@ -12,7 +12,8 @@ struct AutoPlaylistBuilderApp: App {
                 configuration: configuration,
                 keychainService: AppConfiguration.keychainService,
                 keychainAccount: AppConfiguration.keychainAccount,
-                artistSuggestionProvider: AppConfiguration.artistSuggestionProvider
+                artistSuggestionProvider: AppConfiguration.artistSuggestionProvider,
+                artistIdeasProvider: AppConfiguration.artistIdeasProvider
             )
         }
     }
