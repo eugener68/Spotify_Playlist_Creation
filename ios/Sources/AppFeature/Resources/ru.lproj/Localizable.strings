@@ -19,7 +19,7 @@
 "builder.date_stamp_toggle" = "Добавить дату в название";
 "builder.dry_run_toggle" = "Пробный запуск";
 "builder.manual_artist_list_title" = "Список исполнителей вручную";
-"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки. В демо-данных уже есть Metallica и A-ha.";
+"builder.manual_artist_hint" = "Разделяйте исполнителей запятыми или переводами строки.";
 "builder.import_csv_button" = "Импортировать список исполнителей (CSV/текст)";
 "builder.paste_button" = "Вставить список исполнителей";
 "builder.settings_title" = "Настройки";
@@ -76,3 +76,43 @@
 "artist_input.suggestions_auth_required" = "Войдите в Spotify, чтобы включить подсказки.";
 "artist_input.suggestions_error_generic" = "Не удалось загрузить подсказки. Проверьте подключение и повторите попытку.";
 "artist_input.suggestion_followers" = "%@ подписчиков";
+
+/* AI artist generation */
+"artist_input.ai_title" = "Диджей ИИ";
+"artist_input.ai_prompt_placeholder" = "Опишите настроение/вайб, задачу, жанр, годы, язык или похожих исполнителей…\n\nПример: музыка для фокуса, минимум слов, электронная, 2010-е — сейчас";
+"artist_input.ai_generate_button" = "Спросить Диджея ИИ";
+"artist_input.ai_add_all_button" = "Добавить всех в список";
+"artist_input.ai_suggestions_title" = "Подсказки Диджей ИИ";
+"artist_input.ai_suggestions_empty" = "Введите промпт, чтобы получить список исполнителей.";
+"artist_input.ai_error_generic" = "Не удалось сгенерировать исполнителей.";
+
+/* DJ AI paywall */
+"djai.paywall_title" = "Открыть Диджей ИИ";
+"djai.paywall_subtitle" = "Доступны бесплатные пробные периоды (длительность зависит от плана), затем выберите план. Можно отменить в любое время.";
+"djai.paywall_lifetime_header" = "Навсегда";
+"djai.paywall_lifetime_detail" = "Разовая покупка. Открывает функцию Диджей ИИ.";
+"djai.paywall_restore" = "Восстановить покупки";
+"djai.paywall_manage" = "Управление подписками";
+"djai.paywall_no_plans" = "Планы сейчас недоступны. Проверьте интернет, идентификаторы продуктов и статус в App Store Connect.";
+"djai.paywall_disclaimer" = "Подписка продлевается автоматически, если её не отменить минимум за 24 часа до конца текущего периода.";
+"djai.paywall_trial_hint" = "Включает пробный период (длительность зависит от плана)";
+"djai.paywall_cancel_anytime" = "Отмена в любое время";
+"djai.paywall_close" = "Закрыть";
+
+"djai.status_locked" = "Статус: Закрыто";
+"djai.status_subscribed" = "Статус: Подписка активна";
+"djai.status_lifetime" = "Статус: Доступ навсегда";
+
+"djai.plan_weekly" = "Диджей ИИ — Недельная";
+"djai.plan_monthly" = "Диджей ИИ — Месячная";
+"djai.plan_yearly" = "Диджей ИИ — Годовая";
+"djai.plan_lifetime" = "Диджей ИИ — Навсегда";
+"djai.plan_founders_lifetime" = "Диджей ИИ — Для первых покупателей";
+
+/* About */
+"about.title" = "О приложении";
+"about.developer" = "Разработчик";
+"about.support" = "Поддержка";
+"about.contact_us" = "Связаться";
+"about.version_build" = "Версия";
+"about.copyright" = "Авторские права";

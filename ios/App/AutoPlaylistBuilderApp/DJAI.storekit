@@ -1,0 +1,184 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "7CB2BC10",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "79.99",
+      "familyShareable" : false,
+      "internalID" : "11EA84DC",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Постоянная подписка \"Диджей ИИ\" для первых покупателей",
+          "displayName" : "Диджей ИИ - для первых покупателей",
+          "locale" : "ru"
+        }
+      ],
+      "productID" : "com.eugene.AutoPlaylistBuilder.dj.ai.founders.lifetime",
+      "referenceName" : "DJ AI - Early Adopters Lifetime Subscription",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "99.99",
+      "familyShareable" : false,
+      "internalID" : "9B991B00",
+      "localizations" : [
+        {
+          "description" : "",
+          "displayName" : "",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Постоянная подписка на \"Диджей ИИ\" возможности",
+          "displayName" : "Диджей ИИ - постоянная подписка",
+          "locale" : "ru"
+        }
+      ],
+      "productID" : "com.eugene.AutoPlaylistBuilder.dj.ai.lifetime",
+      "referenceName" : "DJ AI - Lifetime subscription",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "4172C029",
+      "localizations" : [
+
+      ],
+      "name" : "SPB-DJ-AI-Subscription-Group",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "0.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "C03DD692",
+          "introductoryOffer" : {
+            "internalID" : "0FF65E2C",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P3D"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.eugene.AutoPlaylistBuilder.dj.ai.weekly",
+          "recurringSubscriptionPeriod" : "P1W",
+          "referenceName" : "DJ AI Weekly Subscription",
+          "subscriptionGroupID" : "4172C029",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "2.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "473BD3FF",
+          "introductoryOffer" : {
+            "internalID" : "79AA99FD",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1W"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.eugene.AutoPlaylistBuilder.dj.ai.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "DJ AI Monthly Subscription",
+          "subscriptionGroupID" : "4172C029",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "EC1390FE",
+          "introductoryOffer" : {
+            "displayPrice" : "0.99",
+            "internalID" : "3D4911C0",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.eugene.AutoPlaylistBuilder.dj.ai.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "DJ AI Yearly Subscription",
+          "subscriptionGroupID" : "4172C029",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

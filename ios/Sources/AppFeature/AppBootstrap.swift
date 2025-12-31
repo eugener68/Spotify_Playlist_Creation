@@ -174,12 +174,20 @@ public struct RootView: View {
         }
     }
 
-    public init(dependencies: AppDependencies, artistSuggestionProvider: ArtistSuggestionProviding? = nil) {
+    public init(
+        dependencies: AppDependencies,
+        artistSuggestionProvider: ArtistSuggestionProviding? = nil,
+        artistIdeasProvider: ArtistIdeasProviding? = nil
+    ) {
         let suggestionProvider = artistSuggestionProvider ?? dependencies.apiClient
         _artistSuggestions = StateObject(wrappedValue: ArtistSuggestionViewModel(provider: suggestionProvider))
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
         _appleMusicAuthViewModel = StateObject(wrappedValue: AppleMusicAuthenticationViewModel(authenticator: dependencies.appleMusicAuthenticator))
+        let resolvedIdeasProvider = artistIdeasProvider
+            ?? (artistSuggestionProvider as? ArtistIdeasProviding)
+            ?? (dependencies.apiClient as? ArtistIdeasProviding)
+        _artistIdeas = State(initialValue: resolvedIdeasProvider.map { ArtistIdeasViewModel(provider: $0) })
     }
 
 #if canImport(Security)
@@ -190,7 +198,8 @@ public struct RootView: View {
         keychainService: String = "autoplaylistbuilder.tokens",
         keychainAccount: String = "current-user",
         artistSuggestionProvider: ArtistSuggestionProviding? = nil,
-        appleMusicAuthenticator: AppleMusicAuthenticator? = nil
+        appleMusicAuthenticator: AppleMusicAuthenticator? = nil,
+        artistIdeasProvider: ArtistIdeasProviding? = nil
     ) {
         var deps = AppDependencies.liveUsingKeychain(
             configuration: configuration,
@@ -200,7 +209,8 @@ public struct RootView: View {
         deps.appleMusicAuthenticator = appleMusicAuthenticator
         self.init(
             dependencies: deps,
-            artistSuggestionProvider: artistSuggestionProvider
+            artistSuggestionProvider: artistSuggestionProvider,
+            artistIdeasProvider: artistIdeasProvider
         )
     }
 #endif
@@ -210,11 +220,15 @@ public struct RootView: View {
     @StateObject private var appleMusicAuthViewModel: AppleMusicAuthenticationViewModel
     @State private var playlistName: String = L10n.Builder.defaultPlaylistName
     @State private var lastDefaultPlaylistName: String = L10n.Builder.defaultPlaylistName
-    @State private var manualArtists: String = "Metallica, A-ha"
+    @State private var manualArtists: String = ""
+    @FocusState private var isManualArtistsFocused: Bool
     @State private var limitPerArtist: Int = 5
     @State private var maxTracks: Int = 25
     @State private var shuffle: Bool = true
     @State private var preferOriginalTracks: Bool = true
+
+    @State private var isPresentingDJAI: Bool = false
+    @State private var isPresentingAbout: Bool = false
     @Environment(\.openURL) private var openURLAction
     @State private var dateStamp: Bool = true
     @State private var dryRun: Bool = true
@@ -224,6 +238,8 @@ public struct RootView: View {
     @ObservedObject private var localization = LocalizationController.shared
     @ObservedObject private var appearance = AppearanceController.shared
     @StateObject private var artistSuggestions: ArtistSuggestionViewModel
+    @State private var artistIdeas: ArtistIdeasViewModel?
+    @StateObject private var djAIStore = DJAIStore()
     @State private var suppressArtistSuggestionUpdate = false
 #if os(iOS)
     @State private var keyboardHeight: CGFloat = 0
@@ -283,6 +299,7 @@ public struct RootView: View {
             await authViewModel.ensureStatusLoaded()
             await appleMusicAuthViewModel.ensureStatusLoaded()
             updateActiveStepForAuth()
+            await djAIStore.refreshEntitlements()
         }
         .fileImporter(
             isPresented: $isImportingArtists,
@@ -310,6 +327,10 @@ public struct RootView: View {
             withAnimation(.easeOut(duration: duration)) {
                 keyboardHeight = 0
             }
+            // When the keyboard hides, consider manual artist editing finished.
+            // This avoids leaving the suggestion overlay covering the build button.
+            isManualArtistsFocused = false
+            artistSuggestions.clear()
         }
 #endif
     }
@@ -360,9 +381,194 @@ public struct RootView: View {
         ScrollView {
             VStack(spacing: 18) {
                 optionsCard
+                Button(action: { isPresentingAbout = true }) {
+                    Text(L10n.About.title)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .sheet(isPresented: $isPresentingAbout) {
+                    NavigationStack {
+                        AboutView(
+                            developerName: aboutDeveloperName,
+                            developerProfileURL: aboutDeveloperProfileURL,
+                            supportURL: aboutSupportURL,
+                            versionBuild: aboutVersionBuild,
+                            copyright: aboutCopyright
+                        )
+                        .navigationTitle(L10n.About.title)
+                        .toolbar {
+#if os(iOS)
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button(action: { isPresentingAbout = false }) {
+                                    Image(systemName: "xmark")
+                                }
+                                .accessibilityLabel("Close")
+                            }
+#else
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(action: { isPresentingAbout = false }) {
+                                    Image(systemName: "xmark")
+                                }
+                                .accessibilityLabel("Close")
+                            }
+#endif
+                        }
+#if os(iOS)
+                        .navigationBarTitleDisplayMode(.inline)
+#endif
+                    }
+                }
             }
             .padding(.bottom)
         }
+    }
+
+    private struct AboutView: View {
+        let developerName: String?
+        let developerProfileURL: URL?
+        let supportURL: URL?
+        let versionBuild: String
+        let copyright: String?
+
+        @Environment(\.openURL) private var openURLAction
+
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if let developerName {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.developerLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            if let developerProfileURL {
+                                Button(action: { openDeveloperProfile(url: developerProfileURL) }) {
+                                    Text(developerName)
+                                        .font(.subheadline)
+                                        .lineLimit(1)
+                                }
+                            } else {
+                                Text(developerName)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+
+                    if let supportURL {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.supportLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            Link(L10n.About.contactUs, destination: supportURL)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(L10n.About.versionBuildLabel)
+                            .font(.subheadline)
+                        Spacer(minLength: 8)
+                        Text(versionBuild)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+
+                    if let copyright {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            Text(L10n.About.copyrightLabel)
+                                .font(.subheadline)
+                            Spacer(minLength: 8)
+                            Text(copyright)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    }
+                }
+                .padding()
+            }
+        }
+
+        private func openDeveloperProfile(url: URL) {
+            let deepLink = appStoreDeepLinkIfPossible(from: url)
+            if let deepLink {
+                openURLAction(deepLink)
+                return
+            }
+            openURLAction(url)
+        }
+
+        private func appStoreDeepLinkIfPossible(from url: URL) -> URL? {
+            guard url.scheme == "https", url.host == "apps.apple.com" else {
+                return nil
+            }
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.scheme = "itms-apps"
+            guard let deepLink = components?.url else {
+                return nil
+            }
+
+#if os(iOS)
+            // Simulator often cannot open itms-apps links; only use it if the system says it can.
+            if UIApplication.shared.canOpenURL(deepLink) {
+                return deepLink
+            }
+            return nil
+#else
+            return deepLink
+#endif
+        }
+    }
+
+    private var aboutDeveloperName: String? {
+        bundleString(forInfoKey: "DeveloperName")
+    }
+
+    private var aboutDeveloperProfileURL: URL? {
+        guard let urlString = bundleString(forInfoKey: "DeveloperProfileURL")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              let url = URL(string: urlString)
+        else {
+            return nil
+        }
+        return url
+    }
+
+    private var aboutSupportURL: URL? {
+        guard let urlString = bundleString(forInfoKey: "SupportURL")?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              let url = URL(string: urlString)
+        else {
+            return nil
+        }
+        return url
+    }
+
+    private var aboutCopyright: String? {
+        bundleString(forInfoKey: "NSHumanReadableCopyright")
+    }
+
+    private var aboutVersionBuild: String {
+        let version = bundleString(forInfoKey: "CFBundleShortVersionString") ?? ""
+        let build = bundleString(forInfoKey: "CFBundleVersion") ?? ""
+
+        switch (version.isEmpty, build.isEmpty) {
+        case (false, false):
+            return "\(version) (\(build))"
+        case (false, true):
+            return version
+        case (true, false):
+            return build
+        default:
+            return "—"
+        }
+    }
+
+    private func bundleString(forInfoKey key: String) -> String? {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String
     }
 
     private var resultsCard: some View {
@@ -473,15 +679,71 @@ public struct RootView: View {
             Text(L10n.Builder.manualArtistListTitle)
                 .font(.title3.bold())
             TextEditor(text: $manualArtists)
+                .focused($isManualArtistsFocused)
                 .frame(minHeight: 110)
                 .padding(10)
                 .background(editorBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .onChange(of: manualArtists, perform: handleManualArtistInputChange)
+                .onChange(of: isManualArtistsFocused) { focused in
+                    if !focused {
+                        artistSuggestions.clear()
+                    }
+                }
             Text(L10n.Builder.manualArtistHint)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            if shouldShowInlineArtistSuggestions && hasArtistSuggestions {
+
+            if artistIdeas != nil {
+                Button(action: { isPresentingDJAI = true }) {
+                    Label {
+                        Text(L10n.ArtistInput.aiTitle)
+                    } icon: {
+                        Image(systemName: "wand.and.stars")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle())
+                .sheet(isPresented: $isPresentingDJAI) {
+                    if djAIStore.hasAccess, let artistIdeas {
+                        NavigationStack {
+                            DJAIView(
+                                viewModel: artistIdeas,
+                                manualArtists: $manualArtists,
+                                onSelect: insertArtistSuggestionFromDJAI,
+                                onAddAll: addAllArtistSuggestionsFromDJAI,
+                                onManualArtistsChange: handleManualArtistInputChange,
+                                onDismissSpotifySuggestions: { artistSuggestions.clear() }
+                            )
+                            .navigationTitle(L10n.ArtistInput.aiTitle)
+                            .toolbar {
+#if os(iOS)
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    Button(action: { isPresentingDJAI = false }) {
+                                        Image(systemName: "xmark")
+                                    }
+                                    .accessibilityLabel("Close")
+                                }
+#else
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button(action: { isPresentingDJAI = false }) {
+                                        Image(systemName: "xmark")
+                                    }
+                                    .accessibilityLabel("Close")
+                                }
+#endif
+                            }
+#if os(iOS)
+                            .navigationBarTitleDisplayMode(.inline)
+#endif
+                        }
+                    } else {
+                        DJAIPaywallView(store: djAIStore, onClose: { isPresentingDJAI = false })
+                    }
+                }
+            }
+
+            if shouldShowInlineArtistSuggestions && isManualArtistsFocused && hasArtistSuggestions {
                 ArtistSuggestionsList(
                     suggestions: artistSuggestions.suggestions,
                     isLoading: artistSuggestions.isLoading,
@@ -519,6 +781,113 @@ public struct RootView: View {
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: shadowColor, radius: 10, y: 4)
+    }
+
+    private struct DJAIView: View {
+        @ObservedObject var viewModel: ArtistIdeasViewModel
+        @Binding var manualArtists: String
+        let onSelect: (ArtistSuggestionViewModel.Suggestion) -> Void
+        let onAddAll: ([ArtistSuggestionViewModel.Suggestion]) -> Void
+        let onManualArtistsChange: (String) -> Void
+        let onDismissSpotifySuggestions: () -> Void
+
+        @FocusState private var isManualArtistsFocused: Bool
+
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ZStack(alignment: .topLeading) {
+                        if viewModel.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(L10n.ArtistInput.aiPromptPlaceholder)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 18)
+                                .padding(.leading, 16)
+                                .allowsHitTesting(false)
+                        }
+                        TextEditor(text: $viewModel.prompt)
+                            .frame(minHeight: 120)
+                            .padding(10)
+                            .background(Color.black.opacity(0.0001))
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    )
+
+                    Button(action: { viewModel.generate() }) {
+                        Label {
+                            Text(L10n.ArtistInput.aiGenerateButton)
+                        } icon: {
+                            Image(systemName: "wand.and.stars")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(AccentButtonStyle())
+                    .disabled(viewModel.isLoading || viewModel.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    // Clearing the prompt should also clear prior results.
+                    .onChange(of: viewModel.prompt) { newValue in
+                        if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            viewModel.clear()
+                        }
+                    }
+
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                    }
+
+                    if let error = viewModel.errorMessage, !error.isEmpty {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button(action: { onAddAll(viewModel.suggestions) }) {
+                        Text(L10n.ArtistInput.aiAddAllButton)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(SecondaryButtonStyle())
+                    .disabled(viewModel.isLoading || viewModel.suggestions.isEmpty)
+
+                    ArtistSuggestionsList(
+                        title: L10n.ArtistInput.aiSuggestionsTitle,
+                        emptyMessage: L10n.ArtistInput.aiSuggestionsEmpty,
+                        suggestions: viewModel.suggestions,
+                        isLoading: viewModel.isLoading,
+                        errorState: nil,
+                        onSelect: onSelect
+                    )
+
+                    Text(L10n.Builder.manualArtistListTitle)
+                        .font(.headline)
+
+                    TextEditor(text: $manualArtists)
+                        .focused($isManualArtistsFocused)
+                        .frame(minHeight: 120)
+                        .padding(10)
+                        .background(Color.black.opacity(0.0001))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
+                        .onChange(of: manualArtists, perform: onManualArtistsChange)
+                        .onChange(of: isManualArtistsFocused) { focused in
+                            if !focused {
+                                onDismissSpotifySuggestions()
+                            }
+                        }
+
+                    Text(L10n.Builder.manualArtistHint)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
+            }
+        }
     }
 
     private var optionsCard: some View {
@@ -653,7 +1022,10 @@ public struct RootView: View {
     }
 
     private var shouldShowFloatingArtistSuggestions: Bool {
-        shouldUseFloatingArtistSuggestionOverlay && activeStep == .creation && hasArtistSuggestions
+        shouldUseFloatingArtistSuggestionOverlay
+            && activeStep == .creation
+            && hasArtistSuggestions
+            && (isManualArtistsFocused || keyboardHeight > 0)
     }
 
     private var floatingPanelMaxHeight: CGFloat {
@@ -800,17 +1172,43 @@ public struct RootView: View {
     }
 
     private func separatorForAppending() -> String {
-        guard let last = manualArtists.last else { return "" }
-        if last == "\n" {
+        guard !manualArtists.isEmpty else { return "" }
+        var sawNewlineInTrailingWhitespace = false
+        var end = manualArtists.endIndex
+        while end > manualArtists.startIndex {
+            let previous = manualArtists.index(before: end)
+            let character = manualArtists[previous]
+            if character == "\n" {
+                sawNewlineInTrailingWhitespace = true
+            }
+            if !character.isWhitespace {
+                break
+            }
+            end = previous
+        }
+
+        if sawNewlineInTrailingWhitespace {
             return ""
         }
-        if last == "," || last == ";" {
+
+        guard end > manualArtists.startIndex else { return "" }
+        let lastNonWhitespace = manualArtists[manualArtists.index(before: end)]
+        if lastNonWhitespace == "," || lastNonWhitespace == ";" {
             return " "
         }
-        if last.isWhitespace || manualArtists.isEmpty {
-            return ""
-        }
         return ", "
+    }
+
+    private func insertArtistSuggestionFromDJAI(_ suggestion: ArtistSuggestionViewModel.Suggestion) {
+        _ = appendArtists(from: suggestion.name)
+        artistSuggestions.clear()
+    }
+
+    private func addAllArtistSuggestionsFromDJAI(_ suggestions: [ArtistSuggestionViewModel.Suggestion]) {
+        guard !suggestions.isEmpty else { return }
+        let text = suggestions.map(\.name).joined(separator: "\n")
+        _ = appendArtists(from: text)
+        artistSuggestions.clear()
     }
 
     private func currentArtistTokenInfo(in text: String) -> (range: Range<String.Index>, token: String)? {
@@ -1197,6 +1595,8 @@ private struct UploadRowView: View {
 }
 
 private struct ArtistSuggestionsList: View {
+    let title: String
+    let emptyMessage: String
     let suggestions: [ArtistSuggestionViewModel.Suggestion]
     let isLoading: Bool
     let errorState: ArtistSuggestionViewModel.ErrorState?
@@ -1204,10 +1604,26 @@ private struct ArtistSuggestionsList: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    init(
+        title: String = L10n.ArtistInput.suggestionsTitle,
+        emptyMessage: String = L10n.ArtistInput.suggestionsEmpty,
+        suggestions: [ArtistSuggestionViewModel.Suggestion],
+        isLoading: Bool,
+        errorState: ArtistSuggestionViewModel.ErrorState?,
+        onSelect: @escaping (ArtistSuggestionViewModel.Suggestion) -> Void
+    ) {
+        self.title = title
+        self.emptyMessage = emptyMessage
+        self.suggestions = suggestions
+        self.isLoading = isLoading
+        self.errorState = errorState
+        self.onSelect = onSelect
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(L10n.ArtistInput.suggestionsTitle)
+                Text(title)
                     .font(.caption.weight(.semibold))
                     .textCase(.uppercase)
                 Spacer()
@@ -1228,7 +1644,7 @@ private struct ArtistSuggestionsList: View {
                         .multilineTextAlignment(.leading)
                 }
             } else if suggestions.isEmpty {
-                Text(L10n.ArtistInput.suggestionsEmpty)
+                Text(emptyMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
@@ -1383,7 +1799,7 @@ private struct FlowStepSelector: View {
     }
 }
 
-private struct AccentButtonStyle: ButtonStyle {
+struct AccentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
@@ -1399,7 +1815,7 @@ private struct AccentButtonStyle: ButtonStyle {
     }
 }
 
-private struct SecondaryButtonStyle: ButtonStyle {
+struct SecondaryButtonStyle: ButtonStyle {
     @Environment(\.colorScheme) private var colorScheme
 
     func makeBody(configuration: Configuration) -> some View {

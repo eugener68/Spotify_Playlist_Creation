@@ -46,6 +46,23 @@ enum AppConfiguration {
         return SpotifyAPIClient(configuration: configuration, tokenProvider: tokenProvider)
     }
 
+    static var artistIdeasProvider: ArtistIdeasProviding? {
+        let secrets = loadSecrets()
+
+        if let backendURLString = secrets.suggestionsBackendURL,
+           let backendURL = URL(string: backendURLString),
+           !backendURLString.isEmpty {
+            return CloudSuggestionsClient(
+                configuration: .init(
+                    baseURL: backendURL,
+                    apiKey: secrets.suggestionsBackendAPIKey
+                )
+            )
+        }
+
+        return nil
+    }
+
     static var appleMusicAuthenticator: AppleMusicAuthenticator? {
         let secrets = loadSecrets()
         guard let backendURLString = secrets.appleMusicBackendURL,

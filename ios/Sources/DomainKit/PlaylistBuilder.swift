@@ -521,10 +521,15 @@ private extension PlaylistBuilder {
             return tracks.shuffled(using: &generator)
         }
 
-        var buckets = Dictionary(grouping: tracks) { canonicalArtistKey(for: $0.artists) }
-            .map { key, value in
-                ArtistBucket(key: key, tracks: value.shuffled(using: &generator))
-            }
+        // Ensure deterministic ordering across processes/machines.
+        // Swift Dictionary iteration order is not guaranteed and may vary, which would otherwise
+        // change the RNG draw order and the resulting shuffle.
+        let grouped = Dictionary(grouping: tracks) { canonicalArtistKey(for: $0.artists) }
+        let sortedKeys = grouped.keys.sorted()
+        var buckets = sortedKeys.compactMap { key -> ArtistBucket? in
+            guard let value = grouped[key] else { return nil }
+            return ArtistBucket(key: key, tracks: value.shuffled(using: &generator))
+        }
 
         var ordered: [SpotifyTrack] = []
         var previousKey: String?

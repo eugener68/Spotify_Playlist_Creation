@@ -53,6 +53,10 @@ public protocol ArtistSuggestionProviding: Sendable {
     func searchArtistSummaries(_ query: String, limit: Int) async throws -> [ArtistSummary]
 }
 
+public protocol ArtistIdeasProviding: Sendable {
+    func generateArtistIdeas(prompt: String, artistCount: Int, userId: String?) async throws -> [ArtistSummary]
+}
+
 public struct ArtistSummary: Identifiable, Sendable {
     public let id: String
     public let name: String
