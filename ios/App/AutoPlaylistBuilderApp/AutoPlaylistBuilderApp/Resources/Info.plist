@@ -44,6 +44,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>2025.12.24.01</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>This app needs access to Apple Music to create playlists in your library.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
