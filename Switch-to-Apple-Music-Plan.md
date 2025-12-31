@@ -11,6 +11,71 @@ This plan is written for the iOS app in this repo (Swift + MusicKit), and assume
 - Do not ship Apple Music private keys in the app.
 - Keep a service-neutral internal playlist model to support future providers (Spotify export-only, YouTube, Tidal, etc.).
 
+## Apple Credentials & Tokens — What You Need (Step-by-step)
+
+### What the end user needs
+- **No API keys, no tokens, no developer setup.**
+- The user only needs:
+  - an Apple ID signed in on the device
+  - an **active Apple Music subscription** (playlist creation requires it)
+  - to grant your app **Music** permission when prompted
+
+### What you (the developer) must have
+
+#### A) Apple Developer Program membership
+- You need an Apple Developer account enrolled in the **Apple Developer Program**.
+
+#### B) App entitlements / capabilities (Xcode)
+- In your iOS target, enable:
+  - **MusicKit** capability (required)
+  - (Optional) background networking if you expect long operations, but not required
+
+#### C) Apple Music API Key (private key) for Developer Token JWT signing
+Apple Music REST calls require a **Developer Token** (a JWT). To mint that JWT, you need an Apple-issued private key.
+
+Steps (Apple Developer portal):
+1) Go to **Certificates, Identifiers & Profiles**.
+2) Create a new **Key** (commonly referred to as a “MusicKit / Apple Music API key”).
+3) Enable the capability for **Apple Music** (and/or MusicKit as presented in the portal UI).
+4) Download the private key file (typically a `.p8`).
+5) Record:
+   - **Key ID** (`kid`) — shown in the portal
+   - **Team ID** (`iss`) — your Apple Developer Team ID
+
+You will use:
+- `TEAM_ID` (issuer)
+- `KEY_ID` (kid)
+- `PRIVATE_KEY_P8` (signing key)
+
+Important:
+- You can only download the `.p8` once. Store it securely.
+- Never embed the `.p8` in the app.
+
+### Tokens in the system (who creates what)
+
+#### 1) Developer Token (JWT)
+- **Created by:** your backend
+- **Used for:** authenticating *your app* to the Apple Music API
+- **Sent to:** your iOS app over HTTPS
+- **Header/claims:** ES256 JWT with `kid`, `iss`, `iat`, `exp`
+
+#### 2) Music User Token
+- **Created by:** iOS (on-device), after user grants Music access
+- **Used for:** Apple Music *user library* endpoints (create playlists, add tracks)
+- **Stored:** Keychain (on-device)
+- **Sent to Apple:** as `Music-User-Token` header
+
+#### 3) Storefront identifier
+- **Obtained by:** iOS (on-device) via StoreKit API or via REST `GET /v1/me/storefront`
+- **Used for:** catalog endpoints (search songs/artists) since catalog is storefront-scoped
+
+## No-user-keys Guarantee (Product Requirement)
+
+The app must not ask end users for any API keys/tokens.
+- The app requests only Apple Music permission.
+- The backend provides the Developer Token.
+- The app generates/refreshes its own Music User Token.
+
 ## High-level Architecture
 
 ### On-device (iOS)
