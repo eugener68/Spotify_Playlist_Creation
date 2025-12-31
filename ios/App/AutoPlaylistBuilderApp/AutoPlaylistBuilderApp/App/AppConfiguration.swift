@@ -1,5 +1,6 @@
 import Foundation
 import SpotifyAPIKit
+import AppleMusicAPIKit
 
 enum AppConfiguration {
     static let keychainService = "autoplaylistbuilder.production.tokens"
@@ -45,6 +46,36 @@ enum AppConfiguration {
         return SpotifyAPIClient(configuration: configuration, tokenProvider: tokenProvider)
     }
 
+    static var appleMusicAuthenticator: AppleMusicAuthenticator? {
+        let secrets = loadSecrets()
+        guard let backendURLString = secrets.appleMusicBackendURL,
+              let backendURL = URL(string: backendURLString),
+              !backendURLString.isEmpty else {
+            return nil
+        }
+
+        let developerTokenProvider = AppleMusicDeveloperTokenClient(
+            configuration: .init(
+                baseURL: backendURL,
+                apiKey: secrets.appleMusicBackendAPIKey
+            )
+        )
+
+        #if canImport(Security)
+        let userTokenStore: AppleMusicUserTokenStoring = KeychainAppleMusicUserTokenStore(
+            service: "autoplaylistbuilder.applemusic.tokens",
+            account: keychainAccount
+        )
+        #else
+        let userTokenStore: AppleMusicUserTokenStoring = InMemoryAppleMusicUserTokenStore()
+        #endif
+
+        return AppleMusicAuthenticator(
+            developerTokenProvider: developerTokenProvider,
+            userTokenStore: userTokenStore
+        )
+    }
+
     private static func loadSecrets() -> Secrets {
         let bundle = Bundle.main
         if let url = bundle.url(forResource: "AppSecrets", withExtension: "plist"),
@@ -74,6 +105,8 @@ enum AppConfiguration {
         let suggestionsRefreshToken: String?
         let suggestionsBackendURL: String?
         let suggestionsBackendAPIKey: String?
+        let appleMusicBackendURL: String?
+        let appleMusicBackendAPIKey: String?
 
         enum CodingKeys: String, CodingKey {
             case clientID = "client_id"
@@ -82,6 +115,8 @@ enum AppConfiguration {
             case suggestionsRefreshToken = "suggestions_refresh_token"
             case suggestionsBackendURL = "suggestions_backend_url"
             case suggestionsBackendAPIKey = "suggestions_backend_api_key"
+            case appleMusicBackendURL = "apple_music_backend_url"
+            case appleMusicBackendAPIKey = "apple_music_backend_api_key"
         }
     }
 }

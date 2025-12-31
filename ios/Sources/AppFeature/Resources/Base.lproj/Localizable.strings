@@ -7,6 +7,7 @@
 /* Builder copy */
 "builder.default_playlist_name" = "My Playlist";
 "builder.spotify_account_title" = "Spotify Account";
+"builder.apple_music_account_title" = "Apple Music Account";
 "builder.latest_build_title" = "Latest Build";
 "builder.upload_order_title" = "Upload Order";
 "builder.empty_results_title" = "No Builds Yet";
@@ -53,6 +54,15 @@
 "auth.sign_out" = "Sign out";
 "auth.sign_in" = "Sign in with Spotify";
 "auth.unavailable" = "Authentication unavailable in this build.";
+
+/* Apple Music Authentication */
+"apple_music_auth.status_checking" = "Checking Apple Music access…";
+"apple_music_auth.status_connecting" = "Connecting to Apple Music…";
+"apple_music_auth.connected" = "Connected";
+"apple_music_auth.connect" = "Connect Apple Music";
+"apple_music_auth.sign_out" = "Sign out";
+"apple_music_auth.unavailable" = "Apple Music is unavailable in this build.";
+"apple_music_auth.storefront" = "Storefront: %@";
 
 /* Artist input feedback */
 "artist_input.clipboard_empty" = "Clipboard is empty.";

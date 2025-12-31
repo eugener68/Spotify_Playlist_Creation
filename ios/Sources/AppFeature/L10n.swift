@@ -11,6 +11,7 @@ enum L10n {
     enum Builder {
         static var defaultPlaylistName: String { localized("builder.default_playlist_name", "Default playlist field value") }
         static var spotifyAccountTitle: String { localized("builder.spotify_account_title", "Header for Spotify account section") }
+        static var appleMusicAccountTitle: String { localized("builder.apple_music_account_title", "Header for Apple Music account section") }
         static var latestBuildTitle: String { localized("builder.latest_build_title", "Latest build header") }
         static var uploadOrderTitle: String { localized("builder.upload_order_title", "Upload order header") }
         static var emptyResultsTitle: String { localized("builder.empty_results_title", "Empty state title") }
@@ -66,6 +67,21 @@ enum L10n {
         static var signOut: String { localized("auth.sign_out", "Sign out button") }
         static var signIn: String { localized("auth.sign_in", "Sign in button") }
         static var unavailable: String { localized("auth.unavailable", "Auth unavailable copy") }
+    }
+
+    enum AppleMusicAuth {
+        static var statusChecking: String { localized("apple_music_auth.status_checking", "Apple Music auth status - checking") }
+        static var statusConnecting: String { localized("apple_music_auth.status_connecting", "Apple Music auth status - connecting") }
+        static var connected: String { localized("apple_music_auth.connected", "Apple Music connected label") }
+        static var connect: String { localized("apple_music_auth.connect", "Connect Apple Music button") }
+        static var signOut: String { localized("apple_music_auth.sign_out", "Apple Music sign out button") }
+        static var unavailable: String { localized("apple_music_auth.unavailable", "Apple Music auth unavailable copy") }
+        static func storefront(_ id: String) -> String {
+            String.localizedStringWithFormat(
+                localized("apple_music_auth.storefront", "Apple Music storefront display"),
+                id
+            )
+        }
     }
 
     enum ArtistInput {

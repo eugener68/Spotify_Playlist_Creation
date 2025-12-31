@@ -18,6 +18,10 @@ let package = Package(
             targets: ["SpotifyAPIKit"]
         ),
         .library(
+            name: "AppleMusicAPIKit",
+            targets: ["AppleMusicAPIKit"]
+        ),
+        .library(
             name: "AppFeature",
             targets: ["AppFeature"]
         )
@@ -35,8 +39,12 @@ let package = Package(
             dependencies: ["DomainKit"]
         ),
         .target(
+            name: "AppleMusicAPIKit",
+            dependencies: ["DomainKit"]
+        ),
+        .target(
             name: "AppFeature",
-            dependencies: ["DomainKit", "SpotifyAPIKit"],
+            dependencies: ["DomainKit", "SpotifyAPIKit", "AppleMusicAPIKit"],
             resources: [
                 .process("Resources")
             ]
@@ -51,6 +59,10 @@ let package = Package(
         .testTarget(
             name: "SpotifyAPIKitTests",
             dependencies: ["SpotifyAPIKit"]
+        ),
+        .testTarget(
+            name: "AppleMusicAPIKitTests",
+            dependencies: ["AppleMusicAPIKit"]
         )
     ]
 )

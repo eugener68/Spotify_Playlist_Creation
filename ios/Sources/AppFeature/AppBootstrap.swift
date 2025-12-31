@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import DomainKit
 import SpotifyAPIKit
+import AppleMusicAPIKit
 #if canImport(SwiftUI)
 import SwiftUI
 #if canImport(AuthenticationServices)
@@ -21,6 +22,7 @@ public struct AppDependencies {
     public var playlistBuilder: PlaylistBuilder
     public var apiClient: SpotifyAPIClient
     public var authentication: Authentication?
+    public var appleMusicAuthenticator: AppleMusicAuthenticator?
 
     public struct Authentication {
         public let authenticator: SpotifyPKCEAuthenticator
@@ -41,11 +43,13 @@ public struct AppDependencies {
     public init(
         playlistBuilder: PlaylistBuilder,
         apiClient: SpotifyAPIClient,
-        authentication: Authentication? = nil
+        authentication: Authentication? = nil,
+        appleMusicAuthenticator: AppleMusicAuthenticator? = nil
     ) {
         self.playlistBuilder = playlistBuilder
         self.apiClient = apiClient
         self.authentication = authentication
+        self.appleMusicAuthenticator = appleMusicAuthenticator
     }
 
     public static func live(
@@ -175,6 +179,7 @@ public struct RootView: View {
         _artistSuggestions = StateObject(wrappedValue: ArtistSuggestionViewModel(provider: suggestionProvider))
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
+        _appleMusicAuthViewModel = StateObject(wrappedValue: AppleMusicAuthenticationViewModel(authenticator: dependencies.appleMusicAuthenticator))
     }
 
 #if canImport(Security)
@@ -184,14 +189,17 @@ public struct RootView: View {
         configuration: SpotifyAPIConfiguration,
         keychainService: String = "autoplaylistbuilder.tokens",
         keychainAccount: String = "current-user",
-        artistSuggestionProvider: ArtistSuggestionProviding? = nil
+        artistSuggestionProvider: ArtistSuggestionProviding? = nil,
+        appleMusicAuthenticator: AppleMusicAuthenticator? = nil
     ) {
+        var deps = AppDependencies.liveUsingKeychain(
+            configuration: configuration,
+            service: keychainService,
+            account: keychainAccount
+        )
+        deps.appleMusicAuthenticator = appleMusicAuthenticator
         self.init(
-            dependencies: .liveUsingKeychain(
-                configuration: configuration,
-                service: keychainService,
-                account: keychainAccount
-            ),
+            dependencies: deps,
             artistSuggestionProvider: artistSuggestionProvider
         )
     }
@@ -199,6 +207,7 @@ public struct RootView: View {
 
     @StateObject private var viewModel: PlaylistBuilderViewModel
     @StateObject private var authViewModel: AuthenticationViewModel
+    @StateObject private var appleMusicAuthViewModel: AppleMusicAuthenticationViewModel
     @State private var playlistName: String = L10n.Builder.defaultPlaylistName
     @State private var lastDefaultPlaylistName: String = L10n.Builder.defaultPlaylistName
     @State private var manualArtists: String = "Metallica, A-ha"
@@ -272,6 +281,7 @@ public struct RootView: View {
         }
         .task {
             await authViewModel.ensureStatusLoaded()
+            await appleMusicAuthViewModel.ensureStatusLoaded()
             updateActiveStepForAuth()
         }
         .fileImporter(
@@ -323,6 +333,12 @@ public struct RootView: View {
             Text(L10n.Builder.spotifyAccountTitle)
                 .font(.title2.bold())
             authenticationSection()
+
+            Divider()
+
+            Text(L10n.Builder.appleMusicAccountTitle)
+                .font(.title2.bold())
+            appleMusicAuthenticationSection()
         }
         .padding()
         .background(cardBackground)
@@ -867,6 +883,57 @@ public struct RootView: View {
 
     private var isAuthenticationRequiredButUnavailable: Bool {
         authViewModel.requiresAuthentication && !authViewModel.isAuthenticated
+    }
+
+    @ViewBuilder
+    private func appleMusicAuthenticationSection() -> some View {
+        switch appleMusicAuthViewModel.status {
+        case .unknown:
+            HStack {
+                ProgressView()
+                Text(L10n.AppleMusicAuth.statusChecking)
+                    .font(.footnote)
+            }
+        case .signingIn:
+            HStack {
+                ProgressView()
+                Text(L10n.AppleMusicAuth.statusConnecting)
+                    .font(.footnote)
+            }
+        case .signedIn:
+            Label {
+                Text(L10n.AppleMusicAuth.connected)
+            } icon: {
+                Image(systemName: "checkmark.circle.fill")
+            }
+            .foregroundColor(.green)
+
+            if let storefront = appleMusicAuthViewModel.storefrontID {
+                Text(L10n.AppleMusicAuth.storefront(storefront))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            Button(action: { Task { await appleMusicAuthViewModel.signOut() } }) {
+                Text(L10n.AppleMusicAuth.signOut)
+            }
+            .frame(maxWidth: .infinity)
+        case .signedOut:
+            Button(action: { Task { await appleMusicAuthViewModel.connect() } }) {
+                Text(L10n.AppleMusicAuth.connect)
+            }
+            .frame(maxWidth: .infinity)
+        case .unavailable:
+            Text(L10n.AppleMusicAuth.unavailable)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+
+        if let error = appleMusicAuthViewModel.lastError {
+            Text(error)
+                .font(.footnote)
+                .foregroundColor(.red)
+        }
     }
 
     @ViewBuilder

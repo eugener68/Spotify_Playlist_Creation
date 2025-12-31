@@ -1,6 +1,7 @@
 import SwiftUI
 import AppFeature
 import SpotifyAPIKit
+import AppleMusicAPIKit
 
 @main
 struct AutoPlaylistBuilderApp: App {
@@ -12,7 +13,8 @@ struct AutoPlaylistBuilderApp: App {
                 configuration: configuration,
                 keychainService: AppConfiguration.keychainService,
                 keychainAccount: AppConfiguration.keychainAccount,
-                artistSuggestionProvider: AppConfiguration.artistSuggestionProvider
+                artistSuggestionProvider: AppConfiguration.artistSuggestionProvider,
+                appleMusicAuthenticator: AppConfiguration.appleMusicAuthenticator
             )
         }
     }
