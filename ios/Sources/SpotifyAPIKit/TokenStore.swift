@@ -78,6 +78,7 @@ public final class KeychainTokenStore: SpotifyTokenStore {
     private let account: String
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
+    private let keychainQueue = DispatchQueue(label: "autoplaylistbuilder.keychain.spotify")
 
     public init(service: String = "autoplaylistbuilder.tokens", account: String = "default") {
         self.service = service
@@ -86,53 +87,77 @@ public final class KeychainTokenStore: SpotifyTokenStore {
 
     public func save(_ token: SpotifyTokenSet) async throws {
         let data = try encoder.encode(token)
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        SecItemDelete(query as CFDictionary)
-        let attributes: [String: Any] = query.merging([
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]) { $1 }
-        let status = SecItemAdd(attributes as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            throw KeychainError.saveFailed(status)
+        try await withCheckedThrowingContinuation { continuation in
+            keychainQueue.async {
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: service,
+                    kSecAttrAccount as String: account
+                ]
+                SecItemDelete(query as CFDictionary)
+                let attributes: [String: Any] = query.merging([
+                    kSecValueData as String: data,
+                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
+                ]) { $1 }
+                let status = SecItemAdd(attributes as CFDictionary, nil)
+                guard status == errSecSuccess else {
+                    continuation.resume(throwing: KeychainError.saveFailed(status))
+                    return
+                }
+                continuation.resume()
+            }
         }
     }
 
     public func load() async throws -> SpotifyTokenSet? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        if status == errSecItemNotFound {
-            return nil
+        try await withCheckedThrowingContinuation { continuation in
+            keychainQueue.async {
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: service,
+                    kSecAttrAccount as String: account,
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne
+                ]
+                var result: CFTypeRef?
+                let status = SecItemCopyMatching(query as CFDictionary, &result)
+                if status == errSecItemNotFound {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                guard status == errSecSuccess else {
+                    continuation.resume(throwing: KeychainError.loadFailed(status))
+                    return
+                }
+                guard let data = result as? Data else {
+                    continuation.resume(throwing: KeychainError.unexpectedData)
+                    return
+                }
+                do {
+                    let decoded = try decoder.decode(SpotifyTokenSet.self, from: data)
+                    continuation.resume(returning: decoded)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
         }
-        guard status == errSecSuccess else {
-            throw KeychainError.loadFailed(status)
-        }
-        guard let data = result as? Data else {
-            throw KeychainError.unexpectedData
-        }
-        return try decoder.decode(SpotifyTokenSet.self, from: data)
     }
 
     public func clear() async throws {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
-        ]
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw KeychainError.clearFailed(status)
+        try await withCheckedThrowingContinuation { continuation in
+            keychainQueue.async {
+                let query: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: service,
+                    kSecAttrAccount as String: account
+                ]
+                let status = SecItemDelete(query as CFDictionary)
+                guard status == errSecSuccess || status == errSecItemNotFound else {
+                    continuation.resume(throwing: KeychainError.clearFailed(status))
+                    return
+                }
+                continuation.resume()
+            }
         }
     }
 

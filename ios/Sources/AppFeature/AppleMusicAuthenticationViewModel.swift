@@ -31,11 +31,11 @@ public final class AppleMusicAuthenticationViewModel: ObservableObject {
         guard status == .unknown else { return }
 
         do {
-            // If we can load a token, consider the user connected.
-            // This does not validate subscription; that happens during actual API calls.
-            let token = try await authenticator.musicUserToken()
-            status = token.isEmpty ? .signedOut : .signedIn
-            storefrontID = try? await authenticator.storefrontID()
+            // Launch-safe status check: only consult cached token.
+            // Do not trigger permission prompts or user-token requests during app startup.
+            let token = try await authenticator.cachedMusicUserToken()
+            status = (token == nil) ? .signedOut : .signedIn
+            storefrontID = nil
             lastError = nil
         } catch {
             status = .signedOut

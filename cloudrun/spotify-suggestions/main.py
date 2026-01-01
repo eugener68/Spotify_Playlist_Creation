@@ -1,4 +1,5 @@
 import base64
+import hmac
 import json
 import os
 import re
@@ -6,6 +7,7 @@ import time
 from typing import Optional
 
 import httpx
+import jwt
 from fastapi import FastAPI, Header, HTTPException
 
 app = FastAPI()
@@ -13,14 +15,19 @@ app = FastAPI()
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
 
-if not SPOTIFY_CLIENT_ID:
-    raise RuntimeError("SPOTIFY_CLIENT_ID is required")
-if not SPOTIFY_CLIENT_SECRET:
-    raise RuntimeError("SPOTIFY_CLIENT_SECRET is required")
-
 SUGGESTIONS_API_KEY = os.environ.get("SUGGESTIONS_API_KEY")
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+APPLE_MUSIC_TEAM_ID = os.environ.get("APPLE_MUSIC_TEAM_ID")
+APPLE_MUSIC_KEY_ID = os.environ.get("APPLE_MUSIC_KEY_ID")
+APPLE_MUSIC_PRIVATE_KEY_B64 = os.environ.get("APPLE_MUSIC_PRIVATE_KEY_B64")
+APPLE_MUSIC_PRIVATE_KEY_FILE = os.environ.get("APPLE_MUSIC_PRIVATE_KEY_FILE")
+APPLE_MUSIC_BACKEND_API_KEY = os.environ.get("APPLE_MUSIC_BACKEND_API_KEY")
+try:
+    APPLE_MUSIC_TOKEN_TTL_SECONDS = int(os.environ.get("APPLE_MUSIC_TOKEN_TTL_SECONDS", "300"))
+except Exception:
+    APPLE_MUSIC_TOKEN_TTL_SECONDS = 300
 
 # Gemini configuration (override via Cloud Run env vars).
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
@@ -48,6 +55,37 @@ except Exception:
 def _require_api_key(x_api_key: Optional[str]) -> None:
     if SUGGESTIONS_API_KEY and x_api_key != SUGGESTIONS_API_KEY:
         raise HTTPException(status_code=401, detail="unauthorized")
+
+
+def _require_apple_music_api_key(x_api_key: Optional[str]) -> None:
+    expected = APPLE_MUSIC_BACKEND_API_KEY
+    if not expected:
+        raise HTTPException(status_code=501, detail="apple_music_not_configured")
+    provided = x_api_key or ""
+    if not hmac.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+
+def _load_apple_music_private_key_pem() -> str:
+    if APPLE_MUSIC_PRIVATE_KEY_FILE:
+        try:
+            with open(APPLE_MUSIC_PRIVATE_KEY_FILE, "r", encoding="utf-8") as f:
+                value = f.read().strip()
+        except Exception as exc:
+            raise HTTPException(status_code=501, detail=f"apple_music_key_read_error: {exc}")
+        if value:
+            return value
+
+    if APPLE_MUSIC_PRIVATE_KEY_B64:
+        try:
+            decoded = base64.b64decode(APPLE_MUSIC_PRIVATE_KEY_B64).decode("utf-8")
+        except Exception as exc:
+            raise HTTPException(status_code=501, detail=f"apple_music_key_decode_error: {exc}")
+        decoded = (decoded or "").strip()
+        if decoded:
+            return decoded
+
+    raise HTTPException(status_code=501, detail="apple_music_not_configured")
 
 
 def _extract_json_object(text: str) -> Optional[dict]:
@@ -210,8 +248,88 @@ def _is_reasonable_match(query: str, matched_name: str) -> bool:
         return False
     return all(t in m_tokens for t in q_tokens)
 
+
+async def _gemini_generate_artist_names(
+    *,
+    prompt: str,
+    candidate_count: int,
+    model: str,
+    temperature: float,
+    avoid_names: list[str] | None = None,
+) -> tuple[list[str], dict, str]:
+    if not GEMINI_API_KEY:
+        raise HTTPException(status_code=501, detail="gemini_not_configured")
+
+    avoid_clause = ""
+    if avoid_names:
+        # Keep this compact to avoid ballooning the prompt.
+        compact = ", ".join(avoid_names[:50])
+        avoid_clause = f" Do not include any of these artists: {compact}."
+
+    system_instructions = (
+        "Return JSON only. No markdown. "
+        "Schema: {\"artists\": [\"Artist Name\", ...]}. "
+        "Provide exactly the requested number when possible. "
+        "Only include artist names that match the user's prompt constraints (genre/era/language/nationality). "
+        "Do not include unrelated artists. Do not include placeholders like {Parentheses}, brackets, or notes." + avoid_clause
+    )
+
+    gemini_body = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": system_instructions},
+                    {"text": f"Artist count: {candidate_count}"},
+                    {"text": f"Prompt: {prompt}"},
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": temperature,
+            "maxOutputTokens": GEMINI_MAX_OUTPUT_TOKENS,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, params={"key": GEMINI_API_KEY}, json=gemini_body)
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"gemini_error: {resp.text}")
+
+    gemini_payload = resp.json() or {}
+    candidates = gemini_payload.get("candidates") or []
+    text = ""
+    if candidates:
+        content = (candidates[0] or {}).get("content") or {}
+        parts = content.get("parts") or []
+        if isinstance(parts, list) and parts:
+            text_chunks: list[str] = []
+            for part in parts:
+                if isinstance(part, dict) and isinstance(part.get("text"), str):
+                    chunk = part.get("text") or ""
+                    if chunk:
+                        text_chunks.append(chunk)
+            text = "".join(text_chunks)
+
+    parsed = _extract_json_object(text)
+    if parsed is None:
+        extracted = _extract_artist_strings_from_text(text, limit=candidate_count)
+        parsed = {"artists": extracted}
+
+    names = _sanitize_artist_names(parsed, limit=candidate_count)
+    return names, gemini_payload, text
+
 _token_cache: dict[str, object] = {
     "access_token": None,
+    "expires_at": 0.0,
+}
+
+_apple_music_token_cache: dict[str, object] = {
+    "token": None,
     "expires_at": 0.0,
 }
 
@@ -223,6 +341,9 @@ def _basic_auth_header(client_id: str, client_secret: str) -> str:
 
 
 async def _get_app_access_token() -> str:
+    if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        raise HTTPException(status_code=501, detail="spotify_not_configured")
+
     now = time.time()
     cached = _token_cache.get("access_token")
     expires_at = float(_token_cache.get("expires_at") or 0.0)
@@ -254,6 +375,38 @@ async def _get_app_access_token() -> str:
     _token_cache["access_token"] = access_token
     _token_cache["expires_at"] = now + expires_in
     return access_token
+
+
+def _get_apple_music_developer_token() -> str:
+    if not APPLE_MUSIC_TEAM_ID or not APPLE_MUSIC_KEY_ID:
+        raise HTTPException(status_code=501, detail="apple_music_not_configured")
+
+    now = int(time.time())
+    cached = _apple_music_token_cache.get("token")
+    expires_at = int(float(_apple_music_token_cache.get("expires_at") or 0.0))
+    if isinstance(cached, str) and cached and now < (expires_at - 30):
+        return cached
+
+    private_key_pem = _load_apple_music_private_key_pem()
+
+    ttl = max(60, min(int(APPLE_MUSIC_TOKEN_TTL_SECONDS or 300), 3600))
+    exp = now + ttl
+    payload = {"iss": APPLE_MUSIC_TEAM_ID, "iat": now, "exp": exp}
+
+    try:
+        token = jwt.encode(payload, private_key_pem, algorithm="ES256", headers={"kid": APPLE_MUSIC_KEY_ID})
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"apple_music_jwt_error: {exc}")
+
+    _apple_music_token_cache["token"] = token
+    _apple_music_token_cache["expires_at"] = float(exp)
+    return token
+
+
+@app.get("/apple-music/developer-token")
+async def apple_music_developer_token(x_api_key: Optional[str] = Header(default=None)):
+    _require_apple_music_api_key(x_api_key)
+    return {"token": _get_apple_music_developer_token()}
 
 
 @app.get("/suggestions")
@@ -345,65 +498,13 @@ async def artist_ideas(
         if re.match(r"^[a-zA-Z0-9._\-]+$", requested_model) and len(requested_model) <= 64:
             model = requested_model
 
-    if not GEMINI_API_KEY:
-        raise HTTPException(status_code=501, detail="gemini_not_configured")
-
-    system_instructions = (
-        "Return JSON only. No markdown. "
-        "Schema: {\"artists\": [\"Artist Name\", ...]}. "
-        "Provide exactly the requested number when possible. "
-        "Only include artist names that match the user's prompt constraints (genre/era/language/nationality). "
-        "Do not include unrelated artists. Do not include placeholders like {Parentheses}, brackets, or notes."
+    names, gemini_payload, text = await _gemini_generate_artist_names(
+        prompt=prompt,
+        candidate_count=candidate_count,
+        model=model,
+        temperature=GEMINI_TEMPERATURE,
+        avoid_names=None,
     )
-
-    gemini_body = {
-        "contents": [
-            {
-                "role": "user",
-                "parts": [
-                    {"text": system_instructions},
-                    {"text": f"Artist count: {candidate_count}"},
-                    {"text": f"Prompt: {prompt}"},
-                ],
-            }
-        ],
-        "generationConfig": {
-            "temperature": GEMINI_TEMPERATURE,
-            "maxOutputTokens": GEMINI_MAX_OUTPUT_TOKENS,
-            "responseMimeType": "application/json",
-        },
-    }
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(url, params={"key": GEMINI_API_KEY}, json=gemini_body)
-
-    if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"gemini_error: {resp.text}")
-
-    gemini_payload = resp.json() or {}
-    candidates = gemini_payload.get("candidates") or []
-    text = ""
-    if candidates:
-        content = (candidates[0] or {}).get("content") or {}
-        parts = content.get("parts") or []
-        if isinstance(parts, list) and parts:
-            text_chunks: list[str] = []
-            for part in parts:
-                if isinstance(part, dict) and isinstance(part.get("text"), str):
-                    chunk = part.get("text") or ""
-                    if chunk:
-                        text_chunks.append(chunk)
-            text = "".join(text_chunks)
-
-    parsed = _extract_json_object(text)
-    if parsed is None:
-        # Some responses may still not be strict JSON (often truncated). Try best-effort.
-        extracted = _extract_artist_strings_from_text(text, limit=candidate_count)
-        parsed = {"artists": extracted}
-
-    names = _sanitize_artist_names(parsed, limit=candidate_count)
 
     verified: list[dict] = []
     seen_ids: set[str] = set()
@@ -434,8 +535,55 @@ async def artist_ideas(
         if len(verified) >= safe_count:
             break
 
+    # If we under-filled (common when Gemini returns typos/obscure names), do one retry with:
+    # - more candidates
+    # - lower temperature
+    # - an explicit avoid list
+    retry_meta: dict | None = None
+    retry_text: str | None = None
+    retry_names: list[str] | None = None
+    if len(verified) < safe_count:
+        retry_candidate_count = min(
+            ARTIST_IDEAS_MAX_CANDIDATES,
+            max(candidate_count * 2, safe_count + 10),
+        )
+        retry_names, retry_meta_payload, retry_text = await _gemini_generate_artist_names(
+            prompt=prompt,
+            candidate_count=retry_candidate_count,
+            model=model,
+            temperature=min(0.2, GEMINI_TEMPERATURE),
+            avoid_names=[v.get("name", "") for v in verified if isinstance(v, dict) and v.get("name")],
+        )
+        retry_meta = retry_meta_payload
+        for name in (retry_names or []):
+            if len(verified) >= safe_count:
+                break
+            summary = await _spotify_search_artist_summary(name)
+            if not summary:
+                if debug:
+                    debug_verification.append({"query": name, "status": "not_found"})
+                continue
+            if not _is_reasonable_match(name, str(summary.get("name") or "")):
+                if debug:
+                    debug_verification.append({"query": name, "status": "mismatch", "matched": summary})
+                continue
+            artist_id = str(summary.get("id") or "")
+            if not artist_id:
+                if debug:
+                    debug_verification.append({"query": name, "status": "missing_id"})
+                continue
+            if artist_id in seen_ids:
+                if debug:
+                    debug_verification.append({"query": name, "status": "duplicate_id", "matched": summary})
+                continue
+            seen_ids.add(artist_id)
+            verified.append(summary)
+            if debug:
+                debug_verification.append({"query": name, "status": "ok", "matched": summary})
+
     response: dict = {"artists": verified}
     if debug:
+        candidates = gemini_payload.get("candidates") or []
         prompt_feedback = gemini_payload.get("promptFeedback")
         first_candidate = candidates[0] if candidates else None
         # Keep this small/safe: enough to diagnose why Gemini returned empty text.
@@ -451,9 +599,14 @@ async def artist_ideas(
             "candidateCount": candidate_count,
             "geminiText": text,
             "geminiMeta": gemini_meta,
-            "parsed": parsed,
             "sanitizedNames": names,
             "verification": debug_verification,
             "verifiedCount": len(verified),
+            "retry": {
+                "attempted": bool(retry_names),
+                "candidateCount": len((retry_meta or {}).get("candidates") or []) if isinstance(retry_meta, dict) else None,
+                "geminiText": retry_text,
+                "sanitizedNames": retry_names,
+            },
         }
     return response

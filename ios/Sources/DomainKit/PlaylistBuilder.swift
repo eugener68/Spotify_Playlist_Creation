@@ -52,9 +52,34 @@ public struct PlaylistResult: Equatable, Sendable {
     public let addedTrackURIs: [String]
     public let finalUploadURIs: [String]
     public let displayTracks: [String]
+    public let draft: PlaylistDraft
     public let dryRun: Bool
     public let reusedExisting: Bool
     public let stats: PlaylistStats
+
+    public init(
+        playlistID: String?,
+        playlistName: String,
+        preparedTrackURIs: [String],
+        addedTrackURIs: [String],
+        finalUploadURIs: [String],
+        displayTracks: [String],
+        draft: PlaylistDraft,
+        dryRun: Bool,
+        reusedExisting: Bool,
+        stats: PlaylistStats
+    ) {
+        self.playlistID = playlistID
+        self.playlistName = playlistName
+        self.preparedTrackURIs = preparedTrackURIs
+        self.addedTrackURIs = addedTrackURIs
+        self.finalUploadURIs = finalUploadURIs
+        self.displayTracks = displayTracks
+        self.draft = draft
+        self.dryRun = dryRun
+        self.reusedExisting = reusedExisting
+        self.stats = stats
+    }
 }
 
 public protocol SpotifyProfileProviding: Sendable {
@@ -198,6 +223,18 @@ public actor PlaylistBuilder {
 
         let preparedURIs = shuffledTracks.map { "spotify:track:\($0.id)" }
         let displayTracks = shuffledTracks.map { Self.displayString(for: $0) }
+        let draftTracks = shuffledTracks.map { track in
+            TrackDescriptor(
+                title: track.name,
+                artistNames: track.artists.map { $0.name },
+                spotifyTrackURI: "spotify:track:\(track.id)"
+            )
+        }
+        let draft = PlaylistDraft(
+            name: resolvedPlaylistName,
+            description: options.dryRun ? nil : "AutoPlaylistBuilder",
+            tracks: draftTracks
+        )
         var playlistID: String?
         var addedTrackURIs = preparedURIs
         var reusedExisting = false
@@ -281,6 +318,7 @@ public actor PlaylistBuilder {
             addedTrackURIs: addedTrackURIs,
             finalUploadURIs: uploadURIs,
             displayTracks: displayTracks,
+            draft: draft,
             dryRun: options.dryRun,
             reusedExisting: reusedExisting,
             stats: stats

@@ -184,6 +184,7 @@ public struct RootView: View {
         _viewModel = StateObject(wrappedValue: PlaylistBuilderViewModel(playlistBuilder: dependencies.playlistBuilder))
         _authViewModel = StateObject(wrappedValue: AuthenticationViewModel(authentication: dependencies.authentication))
         _appleMusicAuthViewModel = StateObject(wrappedValue: AppleMusicAuthenticationViewModel(authenticator: dependencies.appleMusicAuthenticator))
+        self.appleMusicClient = dependencies.appleMusicAuthenticator.map { AppleMusicAPIClient(authenticator: $0) }
         let resolvedIdeasProvider = artistIdeasProvider
             ?? (artistSuggestionProvider as? ArtistIdeasProviding)
             ?? (dependencies.apiClient as? ArtistIdeasProviding)
@@ -218,6 +219,7 @@ public struct RootView: View {
     @StateObject private var viewModel: PlaylistBuilderViewModel
     @StateObject private var authViewModel: AuthenticationViewModel
     @StateObject private var appleMusicAuthViewModel: AppleMusicAuthenticationViewModel
+    private let appleMusicClient: AppleMusicAPIClient?
     @State private var playlistName: String = L10n.Builder.defaultPlaylistName
     @State private var lastDefaultPlaylistName: String = L10n.Builder.defaultPlaylistName
     @State private var manualArtists: String = ""
@@ -299,7 +301,6 @@ public struct RootView: View {
             await authViewModel.ensureStatusLoaded()
             await appleMusicAuthViewModel.ensureStatusLoaded()
             updateActiveStepForAuth()
-            await djAIStore.refreshEntitlements()
         }
         .fileImporter(
             isPresented: $isImportingArtists,
@@ -1258,6 +1259,8 @@ public struct RootView: View {
         let queries = parsedManualQueries()
         guard !queries.isEmpty else { return }
         guard !isAuthenticationRequiredButUnavailable else { return }
+
+        let destination: PlaylistBuilderViewModel.Destination = (appleMusicAuthViewModel.status == .signedIn) ? .appleMusic : .spotify
         let options = PlaylistOptions(
             playlistName: playlistName,
             dateStamp: dateStamp,
@@ -1276,7 +1279,7 @@ public struct RootView: View {
             includeLibraryArtists: false,
             includeFollowedArtists: false
         )
-        viewModel.run(options: options)
+        viewModel.run(options: options, destination: destination, appleMusicClient: appleMusicClient)
     }
 
     private var isAuthenticationRequiredButUnavailable: Bool {
