@@ -5,8 +5,8 @@ steps:
       'build',
       '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:$COMMIT_SHA',
       '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:latest',
-      '-f', 'Spotify_Playlist_Creation/cloudrun/spotify-suggestions/Dockerfile',
-      'Spotify_Playlist_Creation/cloudrun/spotify-suggestions'
+      '-f', 'cloudrun/spotify-suggestions/Dockerfile',
+      'cloudrun/spotify-suggestions'
     ]
 
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -23,6 +23,8 @@ steps:
 images:
 - 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:$COMMIT_SHA'
 - 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:latest'
+
+logsBucket: gs://sp-playlist-builder-1968-cloudbuild-logs-us-central1
 
 options:
   logging: CLOUD_LOGGING_ONLY
