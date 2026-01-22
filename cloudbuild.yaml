@@ -9,6 +9,12 @@ steps:
       'cloudrun/spotify-suggestions'
     ]
 
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:$COMMIT_SHA']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:latest']
+
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args:
@@ -19,9 +25,5 @@ steps:
       '--platform','managed',
       '--allow-unauthenticated'
     ]
-
-images:
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:$COMMIT_SHA'
-- 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:latest'
 
 logsBucket: gs://sp-playlist-builder-1968-cloudbuild-logs-us-central1
