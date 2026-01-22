@@ -25,6 +25,3 @@ images:
 - 'us-central1-docker.pkg.dev/$PROJECT_ID/apps/spotify-suggestions:latest'
 
 logsBucket: gs://sp-playlist-builder-1968-cloudbuild-logs-us-central1
-
-options:
-  logging: CLOUD_LOGGING_ONLY
