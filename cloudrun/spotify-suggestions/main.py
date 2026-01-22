@@ -23,7 +23,7 @@ SUGGESTIONS_API_KEY = os.environ.get("SUGGESTIONS_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 # Gemini configuration (override via Cloud Run env vars).
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-preview")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 try:
     GEMINI_TEMPERATURE = float(os.environ.get("GEMINI_TEMPERATURE", "0.6"))
 except Exception:
