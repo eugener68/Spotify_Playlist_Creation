@@ -1,0 +1,12 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'build',
+      '-t', 'gcr.io/$PROJECT_ID/spotify-suggestions:$COMMIT_SHA',
+      '-f', 'Spotify_Playlist_Creation/cloudrun/spotify-suggestions/Dockerfile',
+      'Spotify_Playlist_Creation/cloudrun/spotify-suggestions'
+    ]
+
+images:
+- 'gcr.io/$PROJECT_ID/spotify-suggestions:$COMMIT_SHA'
